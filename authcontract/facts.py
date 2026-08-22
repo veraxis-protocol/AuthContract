@@ -80,6 +80,14 @@ class FactCorroborationMissing(FactInadmissible):
     code = "RUN_FACT_CORROBORATION_MISSING"
 
 
+class FactFutureTimestamp(FactInadmissible):
+    code = "RUN_FACT_FUTURE_TIMESTAMP"
+
+
+class FactTimeUnverifiable(FactInadmissible):
+    code = "RUN_FACT_TIME_UNVERIFIABLE"
+
+
 @dataclass(frozen=True)
 class FactContract:
     """AC-I15 declaration. Every field is required; none defaults silently."""
@@ -98,8 +106,12 @@ class FactContract:
 class AssertedFact:
     """A fact as it actually arrived at the boundary.
 
-    `trust_basis` is what the asserting party CLAIMS. It is checked against
-    the contract's requirement; a claim is not self-validating.
+    Every field on this object is the asserting party's own CLAIM. None of
+    it is authoritative on its own — `issuer`, `trust_basis`, `assertion_path`
+    and `corroborated_by` here exist for audit/logging only. `admit()` binds
+    its issuer/trust-basis/path/corroboration decisions to the caller-supplied
+    `VerifiedEvidence` instead (AC-012 finding 1): caller-provided text alone
+    must never be sufficient to establish that context.
     """
     fact_id: str
     raw_value: Any
@@ -108,6 +120,24 @@ class AssertedFact:
     trust_basis: str
     asserted_by: str
     asserted_at: datetime
+    assertion_path: str
+    corroborated_by: str | None = None
+
+
+@dataclass(frozen=True)
+class VerifiedEvidence:
+    """Evidence context established by the trusted verification boundary.
+
+    Constructed ONLY by whatever actually verifies provenance for this
+    deployment (signature/channel authentication, corroborator identity
+    lookup, etc.) — never by the party asserting the fact, and never derived
+    from `AssertedFact`'s own claimed fields. This is the smallest explicit
+    separation between "claimed" and "verified" suitable for MVP-alpha: a
+    real verifier is expected to construct this; nothing here performs
+    cryptographic verification itself.
+    """
+    issuer: str
+    trust_basis: str
     assertion_path: str
     corroborated_by: str | None = None
 
@@ -202,17 +232,50 @@ def _check_representation(contract: FactContract, fact: AssertedFact) -> Any:
     )
 
 
-def _check_corroboration(contract: FactContract, fact: AssertedFact) -> None:
-    """Independent confirmation. Independence is enforced, not assumed."""
-    if not fact.corroborated_by:
+def _check_corroboration(
+    contract: FactContract, fact: AssertedFact, evidence: VerifiedEvidence
+) -> None:
+    """Independent confirmation. Independence is enforced, not assumed.
+
+    Corroborator identity comes from `evidence`, never from the fact's own
+    claimed `corroborated_by` — a self-asserted corroborator is not
+    corroboration (AC-012 finding 1).
+    """
+    if not evidence.corroborated_by:
         raise FactCorroborationMissing(
             f"{FactCorroborationMissing.code}: {contract.fact_id} requires "
-            "corroboration; none supplied"
+            "corroboration; none verified"
         )
-    if fact.corroborated_by == fact.asserted_by:
+    if evidence.corroborated_by == fact.asserted_by:
         raise FactCorroborationMissing(
             f"{FactCorroborationMissing.code}: {contract.fact_id} corroboration "
             "is not independent — corroborator is the asserting party"
+        )
+
+
+def _check_freshness(contract: FactContract, fact: AssertedFact, now: datetime) -> None:
+    """Time validation. Fails closed on a future timestamp or an
+    unverifiable comparison, rather than raising an uncontrolled exception.
+    """
+    try:
+        age = now - fact.asserted_at
+    except TypeError as exc:
+        raise FactTimeUnverifiable(
+            f"{FactTimeUnverifiable.code}: {contract.fact_id} asserted_at "
+            f"({fact.asserted_at!r}) is not comparable to `now` ({now!r}) — "
+            "naive/aware datetime mismatch"
+        ) from exc
+
+    if age < timedelta(0):
+        raise FactFutureTimestamp(
+            f"{FactFutureTimestamp.code}: {contract.fact_id} asserted_at is "
+            f"{-age} in the future relative to `now`"
+        )
+
+    if age > contract.freshness:
+        raise FactStale(
+            f"{FactStale.code}: {contract.fact_id} is older than "
+            f"{contract.freshness}"
         )
 
 
@@ -220,19 +283,26 @@ def admit(
     contract: FactContract,
     fact: AssertedFact,
     *,
+    evidence: VerifiedEvidence,
     governed_subject: str,
     now: datetime,
 ) -> Any:
     """Run the AC-I15 admissibility gate. Returns the value, or raises.
 
+    `evidence` must come from the trusted verification boundary, never be
+    derived from `fact`'s own claimed fields — issuer, trust basis,
+    assertion path and corroborator identity are all decided against
+    `evidence`, not against the asserting party's text (AC-012 finding 1).
+
     Check order is deliberate:
       1. contract well-formedness — never evaluate against a broken contract
       2. fact identity          — never evaluate the wrong fact
       3. representation         — a lossily transported value cannot be judged
-      4. issuer / trust basis / path
-      5. freshness
+      4. issuer / trust basis / path (verified, not claimed)
+      5. freshness — fails closed on future timestamps and on unverifiable
+         (naive/aware) comparisons, not just staleness
       6. self-assertion policy
-      7. corroboration requirement
+      7. corroboration requirement (verified corroborator identity)
     """
     _validate_contract(contract)
 
@@ -244,29 +314,26 @@ def admit(
 
     value = _check_representation(contract, fact)
 
-    if fact.issuer != contract.issuer:
+    if evidence.issuer != contract.issuer:
         raise FactUnattested(
             f"{FactUnattested.code}: {contract.fact_id} requires issuer "
-            f"{contract.issuer}, got {fact.issuer}"
+            f"{contract.issuer}, verified issuer is {evidence.issuer}"
         )
 
-    if fact.trust_basis != contract.trust_basis:
+    if evidence.trust_basis != contract.trust_basis:
         raise FactTrustBasisMismatch(
             f"{FactTrustBasisMismatch.code}: {contract.fact_id} requires trust "
-            f"basis '{contract.trust_basis}', asserted with '{fact.trust_basis}'"
+            f"basis '{contract.trust_basis}', verified trust basis is "
+            f"'{evidence.trust_basis}'"
         )
 
-    if fact.assertion_path != contract.assertion_path:
+    if evidence.assertion_path != contract.assertion_path:
         raise FactUnattested(
             f"{FactUnattested.code}: {contract.fact_id} requires assertion path "
-            f"{contract.assertion_path}, arrived via {fact.assertion_path}"
+            f"{contract.assertion_path}, verified path is {evidence.assertion_path}"
         )
 
-    if now - fact.asserted_at > contract.freshness:
-        raise FactStale(
-            f"{FactStale.code}: {contract.fact_id} is older than "
-            f"{contract.freshness}"
-        )
+    _check_freshness(contract, fact, now)
 
     if fact.asserted_by == governed_subject:
         policy = contract.self_assertion_policy
@@ -276,8 +343,8 @@ def admit(
                 f"the governed subject '{governed_subject}'; policy is PROHIBITED"
             )
         if policy == "PERMITTED_WITH_CORROBORATION":
-            _check_corroboration(contract, fact)
-            if fact.corroborated_by == governed_subject:
+            _check_corroboration(contract, fact, evidence)
+            if evidence.corroborated_by == governed_subject:
                 raise FactCorroborationMissing(
                     f"{FactCorroborationMissing.code}: {contract.fact_id} "
                     "corroboration collusion — corroborator is the governed subject"
@@ -285,8 +352,8 @@ def admit(
 
     # Applies regardless of who asserted the fact (AC-009 finding 5).
     if contract.corroboration_required:
-        _check_corroboration(contract, fact)
-        if fact.corroborated_by == governed_subject:
+        _check_corroboration(contract, fact, evidence)
+        if evidence.corroborated_by == governed_subject:
             raise FactCorroborationMissing(
                 f"{FactCorroborationMissing.code}: {contract.fact_id} "
                 "corroboration collusion — corroborator is the governed subject"
