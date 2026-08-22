@@ -30,12 +30,49 @@ compares exactly. The surviving hazard is a *host decoder* flattening
 `decimal(scale)` before the engine sees it. `test_float_ingestion_is_rejected`
 covers it at the ingestion boundary, which is where it actually lives.
 
-## Run
+## Install
 
 ```bash
 pip install -e ".[test]"
+```
+
+## Verify a fixture
+
+```bash
+authcontract verify fixtures/valid.json
+# or, without installing a console script:
+python -m authcontract verify fixtures/valid.json
+```
+
+Exits `0` only on `PASS`; any refusal or error exits non-zero. Both cases
+print one deterministic JSON object to stdout:
+
+```json
+{"status": "PASS", "reason_code": "OK", "contract_digest": "sha256:...", "fixture": "valid.json"}
+```
+
+`fixtures/` holds the committed specimen matrix:
+
+| Fixture | Expected |
+|---|---|
+| `valid.json` | `PASS` / `OK` |
+| `sibling_digest_mismatch.json` | `REFUSED` / `AC_DIGEST` |
+| `self_referential.json` | `REFUSED` / `AC_DIGEST_SCOPE` |
+| `malformed.json` | `REFUSED` / `AC_INVALID_STRUCTURE` |
+| `cross_object_substitution.json` | `REFUSED` / `AC_DIGEST` |
+
+This CLI implements only the currently-tested canonical partition/digest/binding
+rules (`authcontract/digest.py`). It does not implement policy projection,
+mediated-action closure, VEIP decision binding, AEP reconstruction, or
+production PKI/provenance verification — those are later gates.
+
+## Test
+
+```bash
 pytest -q
 ```
+
+`.github/workflows/ci.yml` runs the full suite on every push and pull request.
 
 Normative source: TDD-AC-001 v0.2.1
 `sha256:3126c989186633ba060adf46281d757a0e74b5312779b4e800a3ae39bf071cfa`

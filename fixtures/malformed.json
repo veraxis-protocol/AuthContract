@@ -1,0 +1,23 @@
+{
+  "contract": {
+    "controls": [
+      {
+        "control_id": "PAY-APPROVAL-017",
+        "kind": "REQUIRE"
+      }
+    ],
+    "identity": {
+      "contract_id": "ac:payments:us:specimen-cli-001",
+      "version": "0.2.1"
+    },
+    "subject": {
+      "mediated_actions": [
+        "send_payment"
+      ],
+      "system": "payment-agent"
+    }
+  },
+  "unrecognized_top_level_field": {
+    "foo": "bar"
+  }
+}

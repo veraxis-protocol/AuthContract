@@ -1,0 +1,31 @@
+{
+  "activation": {
+    "contract_digest": "sha256:2c0359baf874aac77aaf25671218dc06f08e0c247706b989afd9120e1002aacd",
+    "state": "ACTIVE"
+  },
+  "admission": {
+    "approvals": [],
+    "contract_digest": "sha256:2c0359baf874aac77aaf25671218dc06f08e0c247706b989afd9120e1002aacd"
+  },
+  "contract": {
+    "controls": [
+      {
+        "control_id": "PAY-APPROVAL-017",
+        "kind": "REQUIRE"
+      }
+    ],
+    "identity": {
+      "contract_id": "ac:payments:us:specimen-cli-001",
+      "version": "0.2.1"
+    },
+    "subject": {
+      "mediated_actions": [
+        "send_payment"
+      ],
+      "system": "payment-agent"
+    }
+  },
+  "proof": {
+    "contract_digest": "sha256:2c0359baf874aac77aaf25671218dc06f08e0c247706b989afd9120e1002aacd"
+  }
+}

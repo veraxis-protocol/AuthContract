@@ -1,0 +1,24 @@
+{
+  "admission": {
+    "approvals": [],
+    "contract_digest": "sha256:1e72221f6911c807ecb876286c63d8ed4d3ef974dbe0da3331e86078ff805fcc"
+  },
+  "contract": {
+    "controls": [
+      {
+        "control_id": "PAY-APPROVAL-017",
+        "kind": "REQUIRE"
+      }
+    ],
+    "identity": {
+      "contract_id": "ac:payments:us:specimen-cli-001",
+      "version": "0.2.1"
+    },
+    "subject": {
+      "mediated_actions": [
+        "send_payment"
+      ],
+      "system": "payment-agent"
+    }
+  }
+}

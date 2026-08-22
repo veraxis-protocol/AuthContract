@@ -5,6 +5,9 @@ description = "AuthContract reference implementation — canonical digest and ru
 requires-python = ">=3.10"
 dependencies = ["rfc8785>=0.1.2"]
 
+[project.scripts]
+authcontract = "authcontract.cli:main"
+
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
 
