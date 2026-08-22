@@ -11,6 +11,9 @@ authcontract = "authcontract.cli:main"
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
 
+[tool.setuptools.packages.find]
+include = ["authcontract*"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
