@@ -440,10 +440,12 @@ def test_a8_cli_old_receipt_against_alternate_valid_admission_refused():
 
 
 def test_a11_cli_readme_matches_da647ac_exactly():
-    """A11, verified at the file-system level via the same CLI test file."""
+    """A11, verified at the file-system level via the same CLI test file.
+
+    Compared against a committed reference copy (see test_veip.py's
+    test_a11_readme_matches_da647ac_exactly for why this doesn't shell out
+    to `git show` at test time: CI's shallow fetch-depth: 1 checkout does
+    not have da647ac's blob reachable)."""
     readme_path = ROOT / "README.md"
-    da647ac_readme = subprocess.run(
-        ["git", "show", "da647ac11222af149d9cbf36d511f6dc0ce50e96:README.md"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    ).stdout
-    assert readme_path.read_text() == da647ac_readme
+    reference_path = FIXTURES / "README_da647ac_reference.md"
+    assert readme_path.read_text() == reference_path.read_text()

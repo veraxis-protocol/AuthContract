@@ -691,12 +691,15 @@ def test_a10_positive_specimen_allows_only_after_all_gates_pass():
 def test_a11_readme_matches_da647ac_exactly():
     """A11: README.md equals the da647ac README exactly in the AC-020A
     candidate — AC-020's developer-documentation rewrite is reverted;
-    AC-021 is the sole authorized documentation rewrite."""
-    import subprocess
+    AC-021 is the sole authorized documentation rewrite.
 
+    Compared against a committed reference copy
+    (fixtures/README_da647ac_reference.md, itself confirmed byte-identical
+    to `git show da647ac:README.md` at the time it was committed) rather
+    than shelling out to `git show` at test time — CI's checkout uses
+    fetch-depth: 1, so da647ac's blob is not reachable from a shallow
+    single-commit clone even though the working tree content is correct.
+    """
     readme_path = FIXTURES.parent / "README.md"
-    da647ac_readme = subprocess.run(
-        ["git", "show", "da647ac11222af149d9cbf36d511f6dc0ce50e96:README.md"],
-        cwd=FIXTURES.parent, capture_output=True, text=True, check=True,
-    ).stdout
-    assert readme_path.read_text() == da647ac_readme
+    reference_path = FIXTURES / "README_da647ac_reference.md"
+    assert readme_path.read_text() == reference_path.read_text()
