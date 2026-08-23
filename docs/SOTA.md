@@ -1,13 +1,14 @@
 # State of the art: what already exists around AuthContract
 
 Scan date: 2026-08-23 (amended 2026-08-23, AC-024A; narrow evidence closure
-2026-08-23, AC-024B). Method: two-direction search (upstream source→runtime
+2026-08-23, AC-024B; final narrow evidence-class literalness closure
+2026-08-23, AC-024C). Method: two-direction search (upstream source→runtime
 and downstream runtime→source) across GitHub, GitLab, and primary
 project/spec pages, independently re-run against an Engineering Lead
 research seed that is explicitly **not** treated as authority here, and
-re-audited twice after independent review found real evidence-integrity
-defects in earlier passes. Those defects and their repairs are listed in
-[§0](#0-amendment-notices).
+re-audited three times after independent review found real
+evidence-integrity defects in earlier passes. Those defects and their
+repairs are listed in [§0](#0-amendment-notices).
 
 **This document is not a competitor table and does not claim AuthContract
 is unique, first, or without equivalent.** It maps what capabilities
@@ -126,6 +127,77 @@ None of these corrections required rewriting the document's overall
 shape or reopening the landscape research. They make the same underlying
 findings more precisely and honestly stated.
 
+### AC-024C (final narrow amendment — evidence-class literalness closure)
+
+Independent review of the AC-024B candidate (ADJ-AC-024B) accepted the
+matrix-semantics and evidence-ledger repairs, but returned the content for
+one final, narrow amendment: two named evidence-class misattributions, plus
+a full targeted sweep for every project-attributed quotation in the
+document, checking that each literally survives inspection of its recorded
+primary source rather than being a paraphrase presented as a direct quote.
+
+**The two named load-bearing repairs:**
+
+1. **Microsoft AGT's institutional-authority sentence.** The prior text
+   presented "does not cite institutional authority for the actual
+   policies it enforces" as a direct, quoted E4 fact from the README at
+   commit `b5705588883fac48b88cbe6fd0bd7d48c798453e`. A targeted re-fetch
+   of that exact commit found neither "institutional authority" nor "does
+   not cite" anywhere in the text. That sentence is this document's own
+   analyst inference from genuine E4 facts (policy is user-supplied via
+   `policy="policy.yaml"`; `safe_tool` evaluates and logs against that
+   supplied policy; the frameworks named are compliance *mappings*, not
+   claimed derivation sources) — restated in [§4](#4-high-materiality-deep-dives)
+   as an explicitly labeled, evidence-bounded inference, separated from the
+   literal E4 quotes that support it.
+2. **In-toto's F-axis score.** The prior matrix cell scored F = YES using
+   "link metadata content hash" as evidence. Link metadata records hashes
+   of a step's *materials and products* (execution evidence), not a
+   separate content-hash/digest of the *governing layout itself*, which
+   in-toto's own documentation describes as authenticated by functionary
+   **signature**. F is rescored NO-EVIDENCE-FOUND in [§3](#3-comparison-matrix)
+   and [§2](#2-what-already-exists-by-capability-layer); the L-axis score
+   (independently recomputable layout/materials/products verification) is
+   unaffected and unchanged, since L concerns replay of recorded steps, not
+   identity of the governing layout. No S1/S2 composite-attack narrative
+   references in-toto's F score (both reference its L-axis evidence only),
+   so no further narrative change was needed there.
+
+**Targeted quote/inference sweep — additional defects found and corrected**
+(not individually named in ADJ-AC-024B, but within the sweep's explicit
+scope that "every project-attributed quote/direct/literal/E4 statement must
+literally survive inspection of its recorded primary source"):
+
+| # | Project / location | Old wording | New wording | Evidence class | Source/ref |
+|---|---|---|---|---|---|
+| 1 | Microsoft AGT, §4 | "does not cite institutional authority for the actual policies it enforces" presented as direct quoted E4 fact | Separated into genuine E4 direct quotes ("Govern any tool function in two lines"; `safe_tool` evaluation/logging behavior) plus an explicitly labeled analyst inference (institutional-authority conclusion) | E4 (quotes) / analyst inference, E8-bounded (conclusion) | README.md @ `b5705588883fac48b88cbe6fd0bd7d48c798453e`, direct re-fetch this cycle |
+| 2 | in-toto, §2 & §3 | F = YES ("link metadata content hash") | F = NO-EVIDENCE-FOUND (link metadata is execution evidence, not layout identity/digest) | E4 (absence of a described layout-digest mechanism, directly observed) | github.com/in-toto/in-toto README, direct fetch this cycle |
+| 3 | FINOS Open RegTech SIG, §2 | quoted as "issue regulation as code alongside the prose" | not a quotation; real literal text is "a community of people interested in creating open source solutions for regulatory and compliance issues" | E4 | github.com/finos/open-regtech-sig, direct fetch this cycle |
+| 4 | decide.fyi, §4 (M-axis) | quoted as "immutable tenant-scoped snapshot metadata" | real literal text is "immutable tenant-scoped snapshots" (word "metadata" not present); full sentence restored | E4 | github.com/decidefyi/decide README, direct fetch this cycle |
+| 5 | Permit0, §2 & §3 (M-axis) | quoted as decisions being "replayable and signed" | not a verbatim compound phrase; real text separately uses "canonical, append-only vocabulary" / "canonical action taxonomy" (verbatim, confirmed) and "signed audit trail" (verbatim) | E4 | github.com/permit0-ai/permit0 README, direct fetch this cycle |
+| 6 | FINOS Common Cloud Controls, §2 & §3 & §9 | "extending in 2025–2026 to CC4AI ('Common Controls for AI')"; "backing from 20+ named financial institutions and cloud providers" | both removed as unsupported by the inspected README; replaced with the seven named Steering Committee organizations actually stated (Citi, LSEG, Morgan Stanley, ScottLogic, Red Hat, RBC, BlackRock); row label "/ CC4AI" removed | E8 (not found in inspected README — does not establish falsity of the claim elsewhere, only that this document's citation of it to this source was incorrect) | github.com/finos/common-cloud-controls README, direct fetch this cycle |
+| 7 | SmartPolicy, §2 & §9 | quoted as "internal pending maturity"; paraphrased as "not independently audited" | real literal text is "NOT audited; internal until mature — no public repo or registry listings yet" | E4 | github.com/smartpolicy-protocol/smartpolicy README, direct fetch this cycle |
+
+**Quotes checked in this sweep and confirmed already accurate, no change
+made:** Veridex's "Human sets limits → Agent gets session key → Makes
+autonomous payments" and "Give your agent a wallet with human-set spending
+limits" (both re-verified verbatim against the live README this cycle);
+OpenEAGO's "Immutable audit trails spanning multiple regulatory frameworks
+for examination by FCA, MAS, and FinCEN" and "Audit Continuity: Blockchain
+trails provide immutable records across all interactions" (both re-verified
+verbatim against `docs/overview/overview.md` this cycle); alibaba/open-agent-auth's
+"public beta" label (re-verified verbatim: "Open Agent Auth is in public
+beta"); dekimuhq's observed absence of an "unresolved"/"undetermined"/
+"ambiguous" evaluation state in `spec/evaluation.md` (previously verified by
+direct read in AC-024A, not re-fetched again this cycle).
+
+None of these seven corrections change any hypothesis disposition in
+[§5](#5-composite-substitution-attacks) or any previously-accepted AC-024B
+repair; all AC-024B repairs (dekimuhq J/N, AP2 I, DSSE/Sigstore L split,
+G/J/M re-audit, per-project evidence-appendix rows, exact Veridex/Kyndryl
+URLs, S6 hypothesis/counter-finding separation, corpus accounting) are
+preserved unchanged.
+
 ---
 
 ## 1. Landscape in one table
@@ -179,7 +251,7 @@ executable law" — these are established territory:
 - **[Accord Project](https://github.com/accordproject)** (Cicero, Ergo) — Linux Foundation smart-legal-contract stack binding natural-language templates to executable clause logic.
 - **[Obligation-First](https://obligationfirst.org/)** ([examples on GitHub](https://github.com/snapsynapse/obligation-first)) — an open upper schema (`Authority → Instrument → Term → Obligation`) for representing normative content across jurisdictions, explicitly *not* a rules engine — it references Catala/Blawx/OpenFisca as where the executable encoding would live.
 - **[Mantra](https://github.com/mhatzl/mantra)** — a Rust-focused requirements-traceability tool: maps requirements to implementation/test code, tracks six sync states (Failed/Verified/Skipped/Unverified/Deprecated/Excluded). Does not reference external regulation or a formal standards body, and its README documents no Git-merge-result-bound PR gate — it is a project-requirements tool in the same family as Loom, not a source-of-normative-authority tool.
-- **[FINOS Open RegTech SIG](https://github.com/finos/open-regtech-sig)** — an active effort to "issue regulation as code alongside the prose," directly on-topic for AuthContract's upstream half.
+- **[FINOS Open RegTech SIG](https://github.com/finos/open-regtech-sig)** — a FINOS special interest group. **Correction from AC-024B:** the phrase "issue regulation as code alongside the prose" was this document's own paraphrase, not a quotation — it does not appear in the repository. The repository's own literal words describe the group as "a community of people interested in creating open source solutions for regulatory and compliance issues." Directly on-topic for AuthContract's upstream half regardless.
 - LegalRuleML / Akoma Ntoso — OASIS LegalDocML standards for legal-rule and legal-document markup. These are **standards, not implementations**; do not infer runtime behavior from the spec text alone.
 
 **If you need to represent a rule's relationship to its source text, look at
@@ -191,7 +263,7 @@ this list before building something bespoke.**
 - **[OSCAL Compass Compliance-to-Policy (C2P)](https://github.com/oscal-compass/compliance-to-policy)** (Python and [Go](https://github.com/oscal-compass/compliance-to-policy-go) implementations) — converts OSCAL Component Definitions into native policy-engine configuration (Kyverno, Open Cluster Management, Auditree) and converts results back into OSCAL Assessment Results, GitOps-native.
 - **[Compliance Trestle](https://github.com/oscal-compass/compliance-trestle)** — CI-friendly tooling for authoring/validating OSCAL compliance artifacts in Git.
 - **[ComplianceAsCode/content](https://github.com/ComplianceAsCode/content)** (formerly SCAP Security Guide) — machine-enforceable security-control content across many OS/product targets.
-- **[FINOS Common Cloud Controls](https://github.com/finos/common-cloud-controls)**, extending in 2025–2026 to **CC4AI ("Common Controls for AI")** — machine-readable, technology-neutral controls for financial-services cloud and AI deployments; the project's own materials describe backing from 20+ named financial institutions and cloud providers.
+- **[FINOS Common Cloud Controls](https://github.com/finos/common-cloud-controls)** — machine-readable, technology-neutral controls for financial-services cloud deployments, with a named Steering Committee of Citi, LSEG, Morgan Stanley, ScottLogic, Red Hat, RBC, and BlackRock. **Correction from AC-024B:** the prior wording ("extending in 2025–2026 to CC4AI ('Common Controls for AI')," and "backing from 20+ named financial institutions and cloud providers") is not supported by this repository's README — a direct re-fetch found no mention of "CC4AI" or "Common Controls for AI" anywhere in it, and no "20+" figure; only the seven Steering Committee organizations named above are stated. Both claims are removed as unsupported by the inspected primary source (E8: not found in the inspected README; this does not establish they are false of the project generally, only that this document's prior citation of them to this source was incorrect).
 
 **Boundary observed across this whole tier, dekimuhq included:** these
 systems map controls/obligations to policy IDs, evidence families, or
@@ -227,12 +299,12 @@ in the last 12 months) and the one most likely to be stale by the time you
 read this:
 
 - **[Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** — the README's own status label is **"Public Preview"** ("production-quality public preview releases. May have breaking changes before GA") — this document preserves that label. Deterministic interception of agent tool calls, YAML/OPA/Cedar policy, zero-trust identity (SPIFFE/DID/mTLS), Merkle-chained tamper-evident audit log, multi-language SDKs, explicit `GovernanceDenied` records. The README maps its controls to OWASP Agentic AI Top 10, NIST AI RMF, EU AI Act, and SOC 2 as *compliance mappings* — it explicitly does not claim to enforce policies *derived from* those frameworks; users author their own YAML policies. High materiality — see [§4](#4-high-materiality-deep-dives).
-- **[Permit0](https://github.com/permit0-ai/permit0)** — pre-execution, deterministic action-authorization layer for agents; every allow/block/escalate decision is described by the project as "replayable and signed"; Apache-2.0, Rust. No explicit maturity/status label was found in the inspected README.
+- **[Permit0](https://github.com/permit0-ai/permit0)** — pre-execution, deterministic action-authorization layer for agents, publishing what it calls a "canonical, append-only vocabulary" (its "canonical action taxonomy") of what agents do, with a separately-described "signed audit trail" for decisions; Apache-2.0, Rust. **Correction from AC-024B:** the compound phrase "replayable and signed" describing decisions does not appear verbatim in the README — that was this document's own paraphrase, not a quotation. No explicit maturity/status label was found in the inspected README.
 - **[Veridex / agentic-payments](https://github.com/veridex-protocol/agentic-payments)** (plus [`agents-treasury`](https://github.com/veridex-protocol)) — session-key-scoped autonomous agent payments with an 8-rule `PolicyEngine`, signed `EvidenceBundle`, multi-chain support. High materiality — see [§4](#4-high-materiality-deep-dives) for the quote-level analysis of what its README actually says.
 - **[OpenEAGO](https://github.com/finos-labs/open-eago)** (FINOS Labs) — enterprise agent governance/orchestration overlay with jurisdiction enforcement, HITL, and real-time compliance checks against GDPR/DORA/EU AI Act/SR 11-7/BCBS 239/PCI-DSS/MiFID-II/EMIR. No explicit maturity/status label was found in the inspected `overview.md`. High materiality — see [§4](#4-high-materiality-deep-dives).
 - **[Permguard](https://github.com/permguard/permguard)** — Git-versioned, distributed authorization engine spanning traditional systems and AI agents.
 - **[Safe Hands](https://github.com/arcadeai-labs/safe-hands)** — implements Asimov's Three Laws of Robotics as Cedar authorization policy, governing a real physical robotic arm over MCP before commands reach actuators. Its own benchmark description reports blocking 46 specific forbidden commands across 11,728 red-team test cases with zero false-permits — a tested-prohibition-coverage result, not by itself evidence of a generally closed/normalized action-space model (see the corrected J axis in [§3](#3-comparison-matrix)). Its "law" concept is a fictional/design framing, not institutional or regulatory authority, and no source-citation mechanism was found.
-- **[SmartPolicy](https://github.com/smartpolicy-protocol/smartpolicy)** — an on-chain (Ethereum Sepolia) policy registry decoupling authorization rules from enforcement, with off-chain EIP-712 signed grants via an MCP server. The project's own materials describe the contracts as tested (54 Foundry tests passing) but **not independently audited** and internal pending maturity — status preserved here rather than upgraded.
+- **[SmartPolicy](https://github.com/smartpolicy-protocol/smartpolicy)** — an on-chain (Ethereum Sepolia) policy registry decoupling authorization rules from enforcement, with off-chain EIP-712 signed grants via an MCP server. The project's own materials state the contracts are tested (54 Foundry tests passing) and, in its own literal words, "**NOT audited; internal until mature** — no public repo or registry listings yet." **Correction from AC-024B:** the prior wording "not independently audited" and "internal pending maturity" paraphrased this sentence rather than quoting it; the exact literal text is restored above — status preserved here rather than upgraded.
 - **[kyndryl-open-source/aiagent-portable-authorization](https://github.com/kyndryl-open-source/aiagent-portable-authorization)** ("PortAuth") — reference implementation of policy-embedded credential authorization for AI agents (arXiv:2605.11487): signed credentials with machine-evaluable constraints, verified at runtime, producing signed audit decisions.
 - **[Google Agent Payments Protocol (AP2)](https://github.com/google-agentic-commerce/AP2)** — an open standard representing every agent purchase as three signed **Mandates** (Intent, Cart, Payment), each a W3C Verifiable Credential; the project's own materials name 60+ launch partners including Mastercard, PayPal, Coinbase, and American Express.
 - **[alibaba/open-agent-auth](https://github.com/alibaba/open-agent-auth)** — enterprise framework implementing the IETF draft "Agent Operation Authorization," binding user identity to agent operations via OAuth2/OIDC/WIMSE/W3C VC with semantic audit trails; the project's own materials describe it as **public beta**.
@@ -252,7 +324,7 @@ Veridex and OpenEAGO specifically.
 
 ### Evidence, replay, attestation
 
-- **[in-toto](https://github.com/in-toto/in-toto)** — signed layouts, authorized functionaries, signed link metadata, and continuous verification of a software supply chain. ("Authorized functionaries" is an identity/authorization mechanism, not institutional standing in the sense AuthContract's target E axis means.)
+- **[in-toto](https://github.com/in-toto/in-toto)** — signed layouts, authorized functionaries, signed link metadata, and continuous verification of a software supply chain. ("Authorized functionaries" is an identity/authorization mechanism, not institutional standing in the sense AuthContract's target E axis means.) **Correction from AC-024B:** the layout itself is directly documented as authenticated by functionary **signature**, not by a separate content-hash/digest of the layout as a governed semantic object; the *link metadata* hashes are records of each step's materials and products (evidence of what a step consumed/produced), not an identity mechanism for the governing layout. F is therefore re-scored NO-EVIDENCE-FOUND (not YES) in [§3](#3-comparison-matrix); the independently-recomputable-replay finding on the L axis is unrelated to this correction and is unchanged.
 - **[decide.fyi](https://github.com/decidefyi/decide)** — versioned, hashed rulebooks (`rulebook.hash`); deterministic verdicts; `input_hash`; Ed25519-signed attestation bundles; replay that compares verdict/evidence/record hashes against the original run; explicit non-binding vs. production-binding modes. High materiality — see [§4](#4-high-materiality-deep-dives).
 - **[Sigstore](https://github.com/sigstore)** and the **[DSSE](https://github.com/secure-systems-lab/dsse)** envelope spec — signing-envelope/attestation-format infrastructure that in-toto and Sigstore's `cosign` both build on. DSSE's own specification establishes a generic signing envelope for arbitrary data; it authenticates that a named signer signed a given payload. That is a distinct claim from independently recomputing a *decision verdict* from raw inputs (AuthContract's target L axis) — see the corrected, split scoring for Sigstore and DSSE in [§3](#3-comparison-matrix).
 
@@ -321,14 +393,14 @@ changed in the AC-024A amendment (from AC-024) retain their single-dagger
 | OSCAL Compass C2P | Upstream/Bridge | N/A | YES | NOT-EVAL | NOT-EVAL | NOT-EVAL | PARTIAL (UUID/version, not confirmed content digest of a governed artifact) | PARTIAL‡ (maps controls to policy IDs and round-trips results to OSCAL Assessment Results; the mapping's own semantic conformance is not independently confirmed) | PARTIAL | NO-EV | N/A | N/A | NOT-EVAL | PARTIAL‡ (OSCAL objects carry version/last-modified metadata; a full correction/supersession workflow is not independently confirmed) | NOT-EVAL |
 | Compliance Trestle | Upstream/Infra | N/A | YES | N/A | NOT-EVAL | NOT-EVAL | PARTIAL | N/A | PARTIAL | N/A | N/A | N/A | NOT-EVAL | PARTIAL‡ | NOT-EVAL |
 | ComplianceAsCode/content | Upstream/Bridge | PARTIAL | YES | N/A | NOT-EVAL | NOT-EVAL | PARTIAL | PARTIAL‡ (generates enforcement content from control content; conformance of the generated content to the control text not independently confirmed) | PARTIAL | N/A | N/A | N/A | NOT-EVAL | PARTIAL‡ | NOT-EVAL |
-| FINOS Common Cloud Controls / CC4AI | Upstream standard | YES | YES | NOT-EVAL | YES | NOT-EVAL | NOT-EVAL | PARTIAL | NO-EV | NO-EV | N/A | N/A | NOT-EVAL | NOT-EVAL | NOT-EVAL |
+| FINOS Common Cloud Controls (**"/ CC4AI" label removed — unsupported by inspected source, see §2**) | Upstream standard | YES | YES | NOT-EVAL | YES | NOT-EVAL | NOT-EVAL | PARTIAL | NO-EV | NO-EV | N/A | N/A | NOT-EVAL | NOT-EVAL | NOT-EVAL |
 | Loom | Adjacent/Upstream | N/A | YES | PARTIAL | N/A | NO-EV | PARTIAL (content-hashed requirement, not an institutionally-governed artifact) | N/A | NO-EV (health-score CI gate is generic, not source-relative merge-result binding) | N/A | N/A | N/A | NOT-EVAL | PARTIAL‡ (content-hash-linked requirements track drift; a full correction/supersession workflow beyond drift-detection is not independently confirmed) | NOT-EVAL |
 | Conftest | Infrastructure | N/A | YES | N/A | N/A | N/A | N/A | N/A | PARTIAL | N/A | N/A | N/A | N/A | N/A | N/A |
 | OPA | Downstream infra | N/A | YES | N/A | N/A | N/A | N/A | N/A | N/A | N/A | PARTIAL | YES | N/A | N/A | N/A |
 | Cedar | Downstream infra | N/A | YES | N/A | N/A | N/A | N/A | NO-EV (formal analysis is of Cedar's own policies, not a translator into Cedar) | N/A | N/A | PARTIAL | YES | N/A | N/A | N/A |
 | OpenFGA | Downstream infra | N/A | YES | N/A | N/A | N/A | N/A | N/A | N/A | N/A | PARTIAL | YES | N/A | N/A | N/A |
 | Microsoft Agent Governance Toolkit | Downstream (**Public Preview**) | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL (identity/RBAC, not institutional standing) | NOT-EVAL | N/A | NO-EV | PARTIAL | **PARTIAL‡** (deterministic tool-call interception against supplied policy; a genuinely closed/normalized action-universe model with unknown/overlap handling, distinct from evaluating named tool calls against policy, was not independently confirmed) | YES | PARTIAL (Merkle-chained audit log is tamper-evident, not confirmed independently recomputable from raw inputs) | NOT-EVAL | YES |
-| Permit0 | Downstream | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL | NOT-EVAL | N/A | NO-EV | PARTIAL | **PARTIAL‡** (project describes a "canonical action taxonomy"; independent confirmation of closed/normalized coverage with unknown-action handling, beyond the project's own description, was not obtained in this scan) | YES | PARTIAL (project calls decisions "replayable and signed"; mechanism not independently confirmed) | NOT-EVAL | NOT-EVAL |
+| Permit0 | Downstream | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL | NOT-EVAL | N/A | NO-EV | PARTIAL | **PARTIAL‡** (project describes a "canonical action taxonomy"; independent confirmation of closed/normalized coverage with unknown-action handling, beyond the project's own description, was not obtained in this scan) | YES | PARTIAL (project describes a "signed audit trail" for decisions — **corrected from AC-024B's "replayable and signed" quote, which was not verbatim**; independent recomputation mechanism not confirmed) | NOT-EVAL | NOT-EVAL |
 | Veridex agentic-payments | Downstream/Runtime | NO-EV (searched; the literal phrase "regulatory mandates" does not appear — see [§4](#4-high-materiality-deep-dives)) | YES | NOT-EVAL | NO-EV | PARTIAL | PARTIAL (mandate version field, not confirmed content digest of a governed artifact) | N/A | NO-EV | PARTIAL | **PARTIAL‡** (an 8-rule `PolicyEngine` over payment actions specifically, a bounded domain; a generally closed/normalized action-universe model with unknown/overlap handling beyond that payment-specific scope was not confirmed) | YES | PARTIAL (`EvidenceBundle` hash/signature verification, not confirmed independent recomputation from raw inputs) | **PARTIAL‡** (mandate versioning observed; a correction/supersession *workflow*, distinct from a version field, was not independently confirmed) | NOT-EVAL |
 | OpenEAGO | Downstream/Control-plane | NO-EV | YES | NO-EV | NOT-EVAL | PARTIAL | NOT-EVAL | N/A | NO-EV | NOT-EVAL | **PARTIAL‡** (governs agent traffic broadly per its own description; a formally closed/normalized action-universe model with unknown/overlap handling was not independently confirmed) | YES | PARTIAL (blockchain audit trail records activity; not confirmed as independently recomputable verdicts) | NOT-EVAL | NOT-EVAL |
 | Permguard | Downstream | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL | PARTIAL (Git-versioned policy, not a confirmed content digest distinct from Git's own object hash) | N/A | NO-EV | NOT-EVAL | **PARTIAL‡** (fine-grained resource-permission model; not confirmed as a closed *action*-universe model specifically, as distinct from relationship/permission authorization) | YES | NOT-EVAL | PARTIAL‡ (Git versioning; correction/supersession workflow not independently confirmed) | NOT-EVAL |
@@ -337,7 +409,7 @@ changed in the AC-024A amendment (from AC-024) retain their single-dagger
 | kyndryl aiagent-portable-authorization | Downstream | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL | NOT-EVAL | N/A | NO-EV | PARTIAL | **PARTIAL‡** (credential-scoped constraints over specific claim-data access; a generally closed/normalized action-universe model was not independently confirmed) | YES | PARTIAL (signed decisions; recomputability from raw inputs not confirmed) | NOT-EVAL | NOT-EVAL |
 | Google AP2 | Downstream/Runtime | NO-EV | YES | NOT-EVAL | NO-EV | PARTIAL | PARTIAL (VC = signed credential; content-digest scheme not confirmed) | N/A | NO-EV | **NO-EV‡** (I is runtime *fact* provenance/admissibility/type/freshness; a wallet-signed Mandate authorizes an *action* and is not itself evidence about the provenance/freshness of a runtime fact — the prior YES conflated action-authorization signing with fact provenance) | PARTIAL (three defined Mandate *types* — Intent/Cart/Payment — are a bounded, typed structure, narrower than a closed action universe over arbitrary agent actions) | YES | PARTIAL (signed Mandates; independent recomputation contract not confirmed) | PARTIAL | NOT-EVAL |
 | alibaba/open-agent-auth | Downstream (**public beta**) | NO-EV | YES | NOT-EVAL | NO-EV | NO-EV (OIDC identity is not institutional standing) | NOT-EVAL | N/A | NO-EV | PARTIAL | **PARTIAL‡** (identity-bound operation authorization; a closed/normalized action-universe model with unknown/overlap handling was not independently confirmed) | YES | PARTIAL (audit trails; recomputability not confirmed) | NOT-EVAL | PARTIAL (labels itself public beta) |
-| in-toto | Infrastructure | N/A | N/A | N/A | N/A | NO-EV (authorized functionaries are an identity mechanism, not institutional standing) | YES (link metadata content hash) | N/A | N/A | N/A | N/A | N/A | YES (layout/materials/products verification is genuinely independently recomputable) | PARTIAL‡ (layouts can be updated/re-issued; a documented correction/supersession *workflow*, distinct from the update mechanism itself, was not independently confirmed) | N/A |
+| in-toto | Infrastructure | N/A | N/A | N/A | N/A | NO-EV (authorized functionaries are an identity mechanism, not institutional standing) | **NO-EV‡** (link metadata records hashes of a step's *materials and products* — an evidence-of-execution record — not a separate content-hash/digest of the *governing layout itself*; in-toto's own documentation describes the layout as authenticated by functionary **signature**, not by a distinct digest/identity scheme for the layout as the governed semantic object; corrected from the AC-024B YES, which conflated link-metadata hashing with layout identity) | N/A | N/A | N/A | N/A | N/A | YES (layout/materials/products verification is genuinely independently recomputable — this L score is unaffected by the F correction above, since L concerns replay/recomputation of recorded steps, not identity of the governing layout) | PARTIAL‡ (layouts can be updated/re-issued; a documented correction/supersession *workflow*, distinct from the update mechanism itself, was not independently confirmed) | N/A |
 | decide.fyi | Downstream/Decision-evidence | NO-EV | YES | NO-EV (`UNKNOWN`/review states are runtime input-completeness, not confirmed source-interpretation ambiguity) | NO-EV | NOT-EVAL | YES (`rulebook.hash`, over the governed rulebook content itself) | N/A | NO-EV | PARTIAL | YES (closed refund/cancel/trial/return decision domain with explicit `UNKNOWN`/review handling) | YES | PARTIAL (hash-compare replay confirmed; not confirmed to recompute from raw un-hashed inputs each time versus re-hashing stored inputs) | YES ("immutable historical snapshots" is direct evidence of preserved history across changes, closer to the literal M definition than a bare version field) | NOT-EVAL |
 | Sigstore | Infrastructure | N/A | N/A | N/A | N/A | PARTIAL (signer identity) | N/A | N/A | N/A | N/A | N/A | N/A | **PARTIAL‡** (transparency-log-backed signature verification confirms a payload was signed and logged; it is not itself independent recomputation of a decision verdict from raw inputs) | N/A | N/A |
 | DSSE | Infrastructure | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | **NO-EV‡** (DSSE is a generic signing-envelope specification for arbitrary payloads; it establishes that a signer signed a payload, not that a decision verdict is independently recomputable from raw inputs — split out from Sigstore and corrected from the AC-024A YES) | N/A | N/A |
@@ -478,12 +550,34 @@ production-grade.
 **Strongest overlap:** deterministic pre-execution interception of agent
 tool calls against YAML/OPA/Cedar policy, with a Merkle-chained
 tamper-evident audit log and an explicit `GovernanceDenied` record shape.
-**Policy provenance, directly quoted:** the toolkit maps its controls to
-OWASP Agentic AI Top 10, NIST AI RMF, EU AI Act, and SOC 2 as *compliance
-mappings*, and states plainly that policy enforcement is
-application-defined — users write their own YAML policies; the toolkit
-"does not cite institutional authority for the actual policies it
-enforces." This is a direct, quoted E4 fact, not an inference.
+**Policy provenance — E4 direct facts plus a bounded analyst inference,
+kept separate.** The exact recorded primary source (README.md at commit
+`b5705588883fac48b88cbe6fd0bd7d48c798453e`) directly, literally states:
+"Govern any tool function in two lines" with a user-supplied
+`policy="policy.yaml"` argument, and "On every call, `safe_tool`
+evaluates the YAML policy, logs the decision to an audit trail, and
+raises `GovernanceDenied` when the policy blocks the action." These are
+E4 direct facts: policy is user/application-supplied, and the toolkit
+intercepts, evaluates, and logs against that supplied policy. Separately,
+the README maps its controls to OWASP Agentic AI Top 10, NIST AI RMF, EU
+AI Act, and SOC 2 as *compliance mappings*, not as claimed sources the
+policies are derived from.
+
+**Correction from AC-024B:** the prior version of this document presented
+the sentence "does not cite institutional authority for the actual
+policies it enforces" as a direct, quoted E4 fact. A targeted re-fetch of
+the exact recorded commit found neither "institutional authority" nor
+"does not cite" anywhere in the text — that sentence was this document's
+own analyst inference from the E4 facts above, not a repository
+quotation, and is restated here as such: **inference, not quotation** —
+given that policy is user-supplied and mapped only to frameworks as
+compliance targets rather than cited as its derivation source, this
+document infers the toolkit does not establish institutional authority
+for the policies it enforces. This inference is bounded by what the
+inspected README does and does not say (an E8 inspection-scope
+observation: no institutional-authority mechanism was found in the
+material inspected); it is not a claim that no such mechanism exists
+anywhere in the project.
 **L-axis:** the Merkle-chained audit log is tamper-*evident* (you can
 detect if it was altered); this scan did not confirm it is independently
 *recomputable* from raw inputs the way dekimuhq's receipt contract is —
@@ -511,9 +605,15 @@ ambiguity specifically, not YES.
 hashes against the original run; whether replay recomputes from the raw,
 un-hashed rulebook/input each time or re-derives from already-stored
 hashes was not confirmed at the code level in this scan — scored PARTIAL.
-**M-axis:** decide.fyi's own materials describe "immutable tenant-scoped
-snapshot metadata" — this is direct evidence of preserved history across
-policy changes, closer to the literal correction/supersession-continuity
+**M-axis:** decide.fyi's own materials state that "successful evaluations
+are registered as **immutable tenant-scoped snapshots**" and that
+"historical replay restores the original canonical input and stored
+rulebook snapshot rather than trusting a caller override or the current
+application deployment." (**Correction from AC-024B:** the prior wording
+"immutable tenant-scoped snapshot metadata" inserted the word "metadata,"
+which does not appear in the source; the exact phrase is "immutable
+tenant-scoped snapshots.") This is direct evidence of preserved history
+across policy changes, closer to the literal correction/supersession-continuity
 definition than a bare version field, so this axis is scored YES, unlike
 most other systems in this matrix where only a version field was found.
 **Capability that remains strong here:** a live decision API with a
@@ -789,14 +889,14 @@ SHA/date/status was obtained, rather than omitting the row.
 | Loom | https://github.com/jsuppe/loom | 2026-08-23 | main | `104ac0b4e2ea8cca72db9f829a61d8b6fd66ddfc` | README.md (direct fetch after initial search miss) | not established from inspected source | E4 |
 | Mantra | https://github.com/mhatzl/mantra | 2026-08-23 | main | `f295cb88b9cc5126759b65f19e446af633783271` | README.md (direct fetch after initial search miss) | Rust-focused; other-language support described as planned | E4 |
 | Safe Hands | https://github.com/arcadeai-labs/safe-hands | 2026-08-23 | main | `52088c179d78e414db1a49e98e4853eaec9a7648` | README.md (direct fetch after initial search miss) | not established from inspected source | E4 |
-| SmartPolicy | https://github.com/smartpolicy-protocol/smartpolicy | 2026-08-23 | main | `534f4e382756a9e54733766a24cf447741ffd5eb` | README.md (direct fetch after initial search miss) | contracts tested (54 Foundry tests), **not independently audited**, "internal pending maturity" (project's own words) | E4 |
+| SmartPolicy | https://github.com/smartpolicy-protocol/smartpolicy | 2026-08-23 | main | `534f4e382756a9e54733766a24cf447741ffd5eb` | README.md (direct fetch after initial search miss) | contracts tested (54 Foundry tests); literal quote "NOT audited; internal until mature" (project's own words — corrected from AC-024B's non-verbatim "internal pending maturity") | E4 |
 | kyndryl aiagent-portable-authorization | https://github.com/kyndryl-open-source/aiagent-portable-authorization | 2026-08-23 | main | `53328ce3a28e958316da378c9d97dbccdb974234` | README.md | not established from inspected source | E4 |
 | Catala | https://github.com/CatalaLang/catala | 2026-08-23 | master | `08832f46b26f5d3936c7b6ac156540cd90e7d500` | README.md, doc/formalization/README.md | active (recent commit history) | E4 |
 | OSCAL Compass Compliance-to-Policy | https://github.com/oscal-compass/compliance-to-policy | 2026-08-23 | main | `6ec821d4c253baf85e5b4d171ee9f9fb7affc1e0` | README.md, architecture docs | not established from inspected source | E4 |
 | OSCAL Compass Compliance-to-Policy (Go) | https://github.com/oscal-compass/compliance-to-policy-go | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source | E4 |
 | Compliance Trestle | https://github.com/oscal-compass/compliance-trestle | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source | E4 |
 | ComplianceAsCode/content | https://github.com/ComplianceAsCode/content | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source | E4 |
-| FINOS Common Cloud Controls / CC4AI | https://github.com/finos/common-cloud-controls | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source | E4 |
+| FINOS Common Cloud Controls | https://github.com/finos/common-cloud-controls | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source; "CC4AI" not found in this README (see §2 correction) | E4 |
 | FINOS Open RegTech SIG | https://github.com/finos/open-regtech-sig | 2026-08-23 | — / not captured | — / not captured | README-level | not established from inspected source | E4 |
 | Google AP2 | https://github.com/google-agentic-commerce/AP2 | 2026-08-23 | main | `e1ea56db72a6385bce3e5c1112b3a56ce60acb43` | README.md, src/ap2/types/mandate.py | v0.2.0 (stated in repo) | E4 |
 | Permit0 | https://github.com/permit0-ai/permit0 | 2026-08-23 | main | `c5e8f7db3d119591d70a3a7d64d195f6d4432127` | README.md | not established from inspected source | E4 |
