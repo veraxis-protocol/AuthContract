@@ -1,10 +1,11 @@
 name: AuthContract Gate
 
-# AC-018 / C-07 / D-006 — evaluates the PR's test-merge composition (base +
-# head merged), not merely the isolated PR head, and blocks on anything
-# other than an admissible PASS over a verified merge result. No
-# continue-on-error, no if: always() bypass, no optional/allowed-failure
-# path: a blocking AuthContract Gate conclusion fails this job outright.
+# Checks the PR's actual test-merge composition (base + head merged), not
+# merely the isolated PR head — a check against the wrong version is not a
+# real PASS. Blocks on anything other than a verified PASS over that merge
+# result. No continue-on-error, no if: always() bypass, no optional/
+# allowed-failure path: a blocking AuthContract Gate conclusion fails this
+# job outright. (Internal reference: AC-018 / C-07 / D-006.)
 #
 # merge_group is intentionally not added as a trigger: this repository has
 # no merge queue configured. Add it if/when one is enabled.

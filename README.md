@@ -1,304 +1,1080 @@
-# AuthContract — reference implementation
+# AuthContract
 
-Bootstrap implementation of the two BRS-established repairs from the frozen
-v0.2.1 normative baseline that are testable without a running policy engine.
+**Proof that the rule you shipped is actually supported by the source.**
 
-| Module | Repair | Invariant |
-|---|---|---|
-| `authcontract/digest.py` | **R01** canonical object partition | AC-I06 |
-| `authcontract/facts.py` | **R10** runtime fact contract | AC-I15 |
-| `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 / AC-017 |
-| `authcontract/git_gate.py` | Git merge-result admissibility | AC-018 / C-07 / D-006 |
-| `authcontract/veip.py` | minimal VEIP-bound runtime decision + AEP-style receipt | AC-019 / C-08 |
+AuthContract is CI for the rules your agents act on.
 
-## Why the partition
+It checks whether a rule in your code is actually supported by its source, catches behavior changes in pull requests, and keeps the rule that passed connected to the actions your agent takes after you ship.
 
-v0.1 placed `approvals[]` inside the hashed `payload` while requiring each
-approval to carry a digest of that payload. That needs a SHA-256 fixed point
-over a structure containing its own digest — infeasible. `digest.py` rejects
-the structure rather than documenting a convention against it.
+If the source does not support the rule, the check fails.
 
-## Why the fact gate
+If the source is ambiguous or incomplete, AuthContract does not guess.
 
-A control requiring `secondary_approval.present == true` is decorative if the
-governed agent may assert that fact. `facts.py` runs admissibility **before**
-policy evaluation: issuer, trust basis, freshness, assertion path,
-self-assertion policy, corroboration, and wire representation.
+If the rule passes, AuthContract preserves the evidence needed to show what source supported it, what behavior was tested, what version was shipped, and what rule governed a later action.
 
-## On R02
+```text
+source → rule → PR → check → merge → runtime → proof
+```
 
-The v0.1 float64 counterexample was **refuted**. Tested against OPA v1.19.1 on
-its own JSON decode path: 0/5 divergences — OPA preserves `json.Number` and
-compares exactly. The surviving hazard is a *host decoder* flattening
-`decimal(scale)` before the engine sees it. `test_float_ingestion_is_rejected`
-covers it at the ingestion boundary, which is where it actually lives.
+---
 
-## Install
+## Why AuthContract?
+
+Agentic software is increasingly allowed to do consequential things:
+
+- send payments
+- approve transactions
+- change customer state
+- execute operational workflows
+- make decisions from regulated or contractual requirements
+- act on behalf of institutions
+
+Developers turn requirements into executable rules.
+
+That creates a simple problem:
+
+**How do you know the rule in the code actually says what the source says?**
+
+A rule can look reasonable, pass ordinary unit tests, and still introduce a threshold, exception, permission, or interpretation that the source never established.
+
+AuthContract makes that relationship testable.
+
+Instead of asking:
+
+> Did the code run correctly?
+
+AuthContract also asks:
+
+> Is the rule the code is running actually supported by the source?
+
+---
+
+## See it in a pull request
+
+Suppose the source says:
+
+```text
+§4.2
+
+Payments above $50,000 require secondary approval.
+```
+
+Your current rule is:
+
+```yaml
+secondary_approval:
+  required_above: 50000
+```
+
+A pull request changes it:
+
+```diff
+ secondary_approval:
+-  required_above: 50000
++  required_above: 100000
+```
+
+Ordinary CI may see perfectly valid YAML and perfectly valid application logic.
+
+AuthContract sees a source-linked behavior change.
+
+```text
+FAIL
+
+Rule changed behavior from its source.
+
+Source
+  §4.2
+
+Source says
+  Secondary approval is required above $50,000.
+
+PR says
+  Secondary approval is required above $100,000.
+
+The new behavior is not supported by the referenced source.
+
+Do not merge.
+```
+
+---
+
+## It also catches invented rules
+
+A developer adds:
+
+```yaml
+manual_review:
+  required_when:
+    customer_risk_score: "> 72"
+```
+
+But the referenced source never establishes `72`.
+
+AuthContract should not infer that the threshold is probably reasonable.
+
+It should say:
+
+```text
+FAIL
+
+Source does not establish this condition.
+
+Introduced rule
+  customer_risk_score > 72
+
+Referenced source
+  §7.1
+
+No supporting threshold was established in the referenced source.
+
+The PR introduces executable behavior that cannot be justified
+from the source.
+
+Do not merge.
+```
+
+---
+
+## And it does not turn uncertainty into permission
+
+Sometimes the source is not clear enough to produce one defensible rule.
+
+For example:
+
+```text
+Enhanced review may be required for unusually large transactions.
+```
+
+There is no threshold.
+
+There may be no single machine-operational interpretation.
+
+AuthContract does not silently choose one.
+
+```text
+UNRESOLVED
+
+The source does not establish a machine-operational threshold.
+
+Source
+  §6.3
+
+Open question
+  What amount qualifies as "unusually large"?
+
+No executable threshold should be merged until this is resolved.
+```
+
+`UNRESOLVED` is not a soft pass.
+
+It means there is still a decision for the responsible people to make.
+
+---
+
+## The developer workflow
+
+AuthContract is designed to fit where developers already work.
+
+```text
+git push
+   ↓
+pull request
+   ↓
+AuthContract check
+   ↓
+source ↔ rule ↔ behavior
+   ↓
+PASS / FAIL / UNRESOLVED
+   ↓
+merge or fix
+```
+
+The developer should not need to learn a new governance vocabulary to use it.
+
+The working vocabulary is familiar:
+
+**source → rule → diff → test → failure → CI → merge → ship**
+
+---
+
+## What PASS means
+
+A green check should mean more than:
+
+> The file parsed.
+
+or:
+
+> The tests passed.
+
+For the bounded rule under evaluation, AuthContract is intended to establish that:
+
+1. the rule is linked to an identified source;
+2. the behavior represented by the rule is supported by that source;
+3. unresolved meaning has not been silently converted into executable behavior;
+4. the tested rule has a stable identity;
+5. the version being merged is the version that was actually checked;
+6. the runtime rule can be tied back to the rule that passed;
+7. evidence can later reconstruct what governed the action.
+
+A `PASS` is therefore evidence about a specific rule, source, version, and evaluation.
+
+It is not a claim that every legal, regulatory, business, or operational question has been solved.
+
+---
+
+## From PR to runtime
+
+Pre-merge proof is necessary, but it is not enough.
+
+A developer can correctly ask:
+
+> You proved the PR was supported by the source. How do I know the agent later acted under that same rule?
+
+AuthContract is designed to keep that continuity intact.
+
+```text
+source
+   ↓
+source-backed rule
+   ↓
+pull request
+   ↓
+AuthContract check
+   ↓
+PASS
+   ↓
+exact merged version
+   ↓
+runtime rule
+   ↓
+agent action
+   ↓
+decision evidence
+```
+
+The rule your agent acts on should be the same rule that passed the source-linked check.
+
+That lets you move from:
+
+> This rule passed CI.
+
+to:
+
+> This action was governed by the exact source-backed rule that passed CI.
+
+---
+
+## After the action
+
+The evidence should let someone reconstruct the decision without trusting a screenshot, a dashboard, or a developer's memory.
+
+For a consequential action, the reconstruction should be able to answer questions such as:
+
+```text
+What source supported this rule?
+
+What exact rule passed?
+
+What version of the rule was active?
+
+What commit contained it?
+
+What runtime facts were relied on?
+
+What action was requested?
+
+Was the action inside the rule's declared boundary?
+
+What decision was produced?
+
+What happened afterward?
+```
+
+The goal is not simply to create logs.
+
+The goal is to preserve the relationship:
+
+```text
+source → rule → version → runtime decision → action → evidence
+```
+
+---
+
+## A successful check
+
+A successful rule change should be equally easy to understand.
+
+```text
+PASS
+
+Rule is supported by its source.
+
+Source
+  §4.2
+
+Source says
+  Secondary approval is required above $50,000.
+
+Rule says
+  Secondary approval is required above $50,000.
+
+Behavior
+  Matched
+
+Rule identity
+  Verified
+
+Result
+  Safe to continue through the configured merge workflow.
+```
+
+Machines can keep reason codes, digests, identifiers, and structured evidence.
+
+Humans should not have to decode them just to understand what happened.
+
+---
+
+## AuthContract is not a policy engine
+
+AuthContract does not replace OPA, Rego, Cedar, or another runtime policy system.
+
+Those systems are good at evaluating rules.
+
+AuthContract focuses on a different boundary.
+
+A policy engine can answer:
+
+> Given this rule and this input, what is the result?
+
+AuthContract is intended to help answer:
+
+> Why is this the rule?
+
+> What source supports it?
+
+> Did this PR change what the source means?
+
+> Did anything unresolved get turned into executable behavior?
+
+> Is the runtime using the same rule that passed?
+
+> Can the resulting action be reconstructed afterward?
+
+A runtime policy engine can therefore be a downstream execution target for an AuthContract-backed rule.
+
+---
+
+## A simple mental model
+
+Think of AuthContract as a test suite for the relationship between a source and executable behavior.
+
+Ordinary tests might check:
+
+```text
+input → code → expected output
+```
+
+AuthContract adds another relationship:
+
+```text
+source → rule → expected behavior
+```
+
+And for agentic systems, one more:
+
+```text
+verified rule → runtime action → evidence
+```
+
+---
+
+## What is an `.ac` file?
+
+An `.ac` artifact is the machine-readable object AuthContract uses to preserve the rule and the information required to verify it.
+
+You should not need to understand its internal architecture to use AuthContract.
+
+At a high level it carries things such as:
+
+- the machine-operational rule;
+- links back to its source;
+- conditions and exceptions;
+- declared action boundaries;
+- unresolved material;
+- version and activation information;
+- approval/admission context;
+- bindings used to test and reconstruct the rule.
+
+The `.ac` artifact exists so that the meaning being reviewed does not disappear between a source document, a pull request, a runtime system, and later evidence.
+
+---
+
+## Quick start
+
+Install the current reference implementation:
 
 ```bash
 pip install -e ".[test]"
 ```
 
-## Verify a fixture
-
-```bash
-authcontract verify fixtures/valid.json
-# or, without installing a console script:
-python -m authcontract verify fixtures/valid.json
-```
-
-Exits `0` only on `PASS`; any refusal or error exits non-zero. Both cases
-print one deterministic JSON object to stdout:
-
-```json
-{"status": "PASS", "reason_code": "OK", "contract_digest": "sha256:...", "fixture": "valid.json"}
-```
-
-`fixtures/` holds the committed specimen matrix:
-
-| Fixture | Expected |
-|---|---|
-| `valid.json` | `PASS` / `OK` |
-| `sibling_digest_mismatch.json` | `REFUSED` / `AC_DIGEST` |
-| `self_referential.json` | `REFUSED` / `AC_DIGEST_SCOPE` |
-| `malformed.json` | `REFUSED` / `AC_INVALID_STRUCTURE` |
-| `cross_object_substitution.json` | `REFUSED` / `AC_DIGEST` |
-
-This CLI implements only the currently-tested canonical partition/digest/binding
-rules (`authcontract/digest.py`). It does not implement VEIP decision binding,
-AEP reconstruction, or production PKI/provenance verification — those are
-later gates.
-
-## Project a fixture
-
-```bash
-authcontract project fixtures/banking_payment_specimen.json
-```
-
-Computes the deterministic operational projection of one fixture: an explicit
-machine-checkable projection domain (`contract.projection_domain`), bound to
-`contract_digest` and activation identity, with its own stable
-`projection_digest`. A fixture with no `projection_domain` refuses with
-`RUN_DOMAIN_ESCAPE` (e.g. AC-015's `fixtures/valid.json` — projection is
-opt-in per contract, not retrofitted onto every fixture).
-
-## Check an action against a fixture's projection domain
-
-```bash
-authcontract check-action fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json
-```
-
-The closed mediated-action universe pre-decision gate: `<action-json>` is a
-path to a committed JSON file `{"action_type": "...", "parameters": {...}}`,
-matching `<fixture>`'s own file-path convention. Refuses (never coerces or
-drops fields) on:
-
-| Condition | reason_code |
-|---|---|
-| projection's `activation_state` is not exactly `"ACTIVE"` (SUSPENDED, REVOKED, missing, or any other value) | `RUN_INACTIVE_CONTRACT` |
-| action type not declared by the contract | `RUN_UNCLASSIFIED_ACTION` |
-| unknown top-level field on the action input, unknown field anywhere in `projection_domain`/an action spec/a parameter spec | `RUN_DOMAIN_ESCAPE` |
-| unknown parameter | `RUN_DOMAIN_ESCAPE` |
-| missing required parameter | `RUN_DOMAIN_ESCAPE` |
-| parameter value outside declared type/enum (e.g. a float where `decimal(N)` requires a string) | `RUN_DOMAIN_ESCAPE` |
-
-`activation_state` is checked before the action is evaluated against the
-domain at all — an inactive contract refuses every action, regardless of
-whether the action itself is otherwise well-formed (AC-017 F1). `project()`
-still builds a `Projection` for a SUSPENDED/REVOKED fixture (needed for
-inspection and `select_matching_projection`'s overlap checks); only
-`check_action`/`check-action` enforce activation.
-
-`projection_domain`, each action spec, each parameter spec, and the action
-input each have an exact allowed-key set (AC-017 F2) — see
-`authcontract.projection.PROJECTION_DOMAIN_ALLOWED_KEYS` and its siblings.
-An unrecognised key at any of these levels refuses rather than being
-silently dropped, and a declared `required` field must be a real boolean
-(not a truthy string or number).
-
-Enum membership is checked with strict type semantics (AC-017 F3): each
-enum member is itself validated against the parameter's declared
-`value_type` when the domain is loaded (a boolean enum may contain only
-`true`/`false`, an integer enum only genuine ints — never `bool`, a
-`decimal(N)` enum only decimal strings), and membership comparison at
-action-check time never falls back to Python's cross-type `==` — so an
-integer `1` can never satisfy a boolean enum containing `true`, and vice
-versa.
-
-`fixtures/actions/` holds the committed action specimen matrix exercising each
-case above against `fixtures/banking_payment_specimen.json`.
-
-Two ACTIVE contracts matching the same action with no declared
-precedence/composition rule, and zero ACTIVE contracts matching an action,
-are refused as `CONTRACT_SCOPE_CONFLICT` and `RUN_UNCLASSIFIED_ACTION`
-respectively — see `authcontract.projection.select_matching_projection` and
-`tests/test_projection.py`. This is a bounded runtime closure check for one
-synthetic specimen, not a universal policy-conflict solver, and is not yet
-wired into a CLI command of its own (no VEIP-style decision layer exists to
-call it from at this stage).
-
-## Adjudicate Git merge-result admissibility
-
-```bash
-authcontract git-gate context.json --repo .
-```
-
-D-006: PASS maps to success; FAIL/UNRESOLVED/ERROR are merge-blocking;
-neutral/skipped states never become a green required check; final merge
-composition is adjudicated, never only an isolated PR head.
-
-`context.json` is a deterministic record of one AuthContract evaluation:
-
-```json
-{
-  "conclusion": "PASS",
-  "repository": "veraxis-protocol/AuthContract",
-  "event_type": "pull_request",
-  "base_ref": "main",
-  "expected_base_sha": "<base SHA as known by the PR event, possibly stale>",
-  "head_sha": "<PR head SHA>",
-  "merge_result_sha": "<the SHA that was actually evaluated — the test-merge/merge-queue result, not the head>",
-  "evaluated_sha": "<the SHA the test/evaluation command actually ran against>"
-}
-```
-
-`--repo` points at a live Git checkout (or a synthetic test repository) the
-gate uses to independently verify merge composition — it never trusts a
-caller-asserted "verified" claim. `current_base_sha` is always re-resolved
-from `--repo`'s own ref state at adjudication time (preferring a freshly
-fetched `refs/remotes/origin/<base_ref>`, falling back to a local branch),
-and `merge_result_sha` must provably contain both that current base and
-`head_sha` as ancestors.
-
-| Condition | reason_code |
-|---|---|
-| `conclusion` is not exactly one of `PASS`/`FAIL`/`UNRESOLVED`/`ERROR` (includes `NEUTRAL`, `SKIPPED`, `CANCELLED`, missing, or any other value) | `GIT_NEUTRAL_CONCLUSION` |
-| required context field missing/malformed, current base ref cannot be resolved, `evaluated_sha`/`merge_result_sha` is the isolated PR head, `expected_base_sha` is stale relative to the freshly-fetched current base, or `merge_result_sha` does not provably bind the current base and/or the PR head | `GIT_MERGE_RESULT_UNVERIFIED` |
-| `conclusion` is `FAIL` over a verified merge result | `GIT_FAIL` |
-| `conclusion` is `UNRESOLVED` over a verified merge result | `GIT_UNRESOLVED` |
-| `conclusion` is `ERROR` over a verified merge result | `GIT_ERROR` |
-
-Exits `0` only for `conclusion: PASS` over a verified merge result;
-everything else exits non-zero — see `tests/test_git_gate.py` for the full
-conclusion-mapping matrix and a reproducible synthetic stale-base scenario
-(temporary Git repositories, never this repository's own `main`).
-
-### Live GitHub Actions path
-
-`.github/workflows/authcontract-gate.yml` runs a dedicated required-check
-job named **AuthContract Gate** on `pull_request`. It checks out the PR's
-GitHub-computed test-merge commit (`fetch-depth: 0`, so ancestry is
-verifiable — not merely the PR head), runs the full test suite against that
-merged composition, and feeds the result into `authcontract git-gate`
-against the checkout itself. No `continue-on-error`, no `if: always()`
-bypass, no optional/allowed-failure path exists in that job — a blocking
-conclusion fails it outright. The existing `.github/workflows/ci.yml`
-matrix is unchanged and runs independently.
-
-**A green `AuthContract Gate` workflow run is not, by itself, proof that
-GitHub will block a merge on it failing.** That requires branch
-protection/a ruleset naming this check as required — see the AC-018 return
-record for whether that was actually established for this repository at
-the time of this candidate.
-
-## Run the bounded VEIP-style runtime decision
-
-```bash
-authcontract run-specimen fixtures/banking_payment_specimen.json \
-  fixtures/actions/send_payment_valid.json \
-  fixtures/runtime/facts_valid.json \
-  --execution-result SIMULATED_SUCCESS
-```
-
-AC-019 / C-08: a minimal deterministic runtime orchestration path that
-*composes* the existing digest (`digest.py`), projection/action-closure
-(`projection.py`), and fact-admissibility (`facts.py`) gates — it does not
-reimplement or modify any of them. `<facts-json>` is a committed JSON file
-`{"now": "<ISO-8601 timestamp>", "facts": [{"fact_id", "raw_value",
-"wire_representation", "asserted_by", "asserted_at", "claimed_issuer",
-"claimed_trust_basis", "claimed_assertion_path", "claimed_corroborated_by",
-"evidence": {"issuer", "trust_basis", "assertion_path",
-"corroborated_by"}}, ...]}`, matching `<artifact>`/`<action-json>`'s own
-file-path convention. `--execution-result` must be one of `NOT_EXECUTED`,
-`SIMULATED_SUCCESS`, `SIMULATED_FAILURE` — this CLI never triggers, and the
-receipt never claims, a real payment/bank side effect.
-
-`ALLOW` is returned only if the exact artifact verifies, the projection was
-ACTIVE and the action in-domain, every contract-declared required fact was
-admitted through `facts.admit()`, and no upstream gate refused. Any upstream
-refusal or error is surfaced as `REFUSED` with that gate's own `reason_code`
-— never converted to a best-effort `ALLOW`:
-
-| Condition | reason_code |
-|---|---|
-| `--execution-result` not one of the three allowed labels (rejected by argparse before this ever reaches `run_specimen`) | n/a (`SystemExit`, argparse) |
-| execution_result not one of the three allowed labels (library call) | `VEIP_INVALID_EXECUTION_RESULT` |
-| facts file is not a JSON object, missing `now`, or a fact entry is missing a required field | `VEIP_MALFORMED_INPUT` |
-| artifact/action fail digest or projection verification | the propagated `digest.py`/`projection.py` code (`AC_DIGEST`, `AC_DIGEST_SCOPE`, `RUN_INACTIVE_CONTRACT`, `RUN_UNCLASSIFIED_ACTION`, `RUN_DOMAIN_ESCAPE`, ...) |
-| a contract-declared required fact has no matching entry in the facts file | `VEIP_FACT_BUNDLE_INCOMPLETE` |
-| a declared required fact fails `facts.admit()` (self-asserted where prohibited, stale, lossy representation, future/unverifiable timestamp, issuer/trust-basis mismatch, missing corroboration, ...) | the propagated `facts.py` code (`RUN_FACT_SELF_ASSERTED`, `RUN_FACT_STALE`, `RUN_FACT_REPRESENTATION`, `RUN_FACT_FUTURE_TIMESTAMP`, `RUN_FACT_TIME_UNVERIFIABLE`, ...) |
-| projection has no `activation_id` | `VEIP_MISSING_ACTIVATION_ID` |
-
-On `ALLOW`, prints a deterministic JSON object binding `contract_digest`,
-`activation_id`, `projection_digest`, `runtime_fact_set_digest` (the
-*admitted* fact set actually used by the decision — normalized typed
-values plus only the verifier-established evidence fields, never raw
-caller assertions or volatile data), `exact_action_digest` (the exact
-normalized action that passed `check_action`), `decision`, and
-`execution_result`, plus a `receipt_digest` computed over those other seven
-fields (never over itself — the same self-reference avoidance `digest.py`
-enforces for R01). All digests use the repository's uniform RFC 8785 JCS +
-SHA-256 discipline. Exits `0` only on `ALLOW`; every refusal exits non-zero
-and prints no receipt.
-
-`fixtures/runtime/` holds the committed facts specimen matrix exercising
-each negative path above against `fixtures/banking_payment_specimen.json`.
-
-## Independently verify an AEP-style receipt
-
-```bash
-authcontract verify-receipt fixtures/runtime/receipt_valid.json \
-  fixtures/banking_payment_specimen.json \
-  fixtures/actions/send_payment_valid.json \
-  fixtures/runtime/facts_valid.json
-```
-
-Recomputes the receipt from the raw source artifact, action, and facts
-(via the same code path as `run-specimen`) and compares every field against
-the supplied receipt — it never trusts a digest string merely because it is
-present in the receipt.
-
-| Condition | reason_code |
-|---|---|
-| receipt is missing a required field, or carries a field outside the exact required set (fails closed — an unrecognised field is refused, never silently dropped) | `VEIP_RECEIPT_MALFORMED` |
-| the artifact/action/facts cannot independently reconstruct an `ALLOW` receipt at all (e.g. a fact was changed so admission now fails) | the propagated reason_code from the reconstruction attempt |
-| any one of `contract_digest`, `activation_id`, `projection_digest`, `runtime_fact_set_digest`, `exact_action_digest`, `decision`, `execution_result`, or `receipt_digest` does not match the independently reconstructed value | `VEIP_RECEIPT_MISMATCH` |
-
-Exits `0` only on `PASS`; every refusal exits non-zero. `tests/test_veip.py`
-and `tests/test_cli_veip.py` carry the full B8 mutation matrix (each of the
-eight bound fields, plus `receipt_digest`, independently detected when
-tampered) and B9 negative-runtime-path matrix (required fact missing,
-self-asserted where prohibited, stale, lossy representation, future/naive
-timestamp, inactive projection, unknown action, action domain escape — each
-refuses before any receipt is issued).
-
-**Claim ceiling:** this is a TESTED bounded MVP-alpha runtime decision and
-AEP-style reconstruction for one synthetic banking specimen, using the
-repository's current digest, fact-admissibility, and
-projection/action-closure components. It does not claim production
-readiness, real payment execution, real institutional authorization,
-cryptographic provenance verification, general VEIP correctness, universal
-policy correctness, legal correctness, or external adoption. `execution_result`
-is always a synthetic, receipt-bound label — never a real bank/payment side
-effect.
-
-## Test
+Run the test suite:
 
 ```bash
 pytest -q
 ```
 
-`.github/workflows/ci.yml` runs the full suite on every push and pull request.
+Verify an AuthContract fixture:
 
-Normative source: TDD-AC-001 v0.2.1
-`sha256:3126c989186633ba060adf46281d757a0e74b5312779b4e800a3ae39bf071cfa`
+```bash
+authcontract verify fixtures/valid.json
+```
+
+Project the banking specimen into its declared runtime domain:
+
+```bash
+authcontract project fixtures/banking_payment_specimen.json
+```
+
+Check an action:
+
+```bash
+authcontract check-action \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json
+```
+
+Run the check that ties a rule, its runtime facts, and an action together, and get a proof receipt back on PASS:
+
+```bash
+authcontract run-specimen \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json \
+  fixtures/runtime/facts_valid.json \
+  --execution-result SIMULATED_SUCCESS
+```
+
+Re-run the evidence — independently recompute a receipt from source and compare:
+
+```bash
+authcontract verify-receipt \
+  fixtures/runtime/receipt_valid.json \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json \
+  fixtures/runtime/facts_valid.json
+```
+
+The CLI prints structured JSON and exits non-zero on refusal.
+
+Example:
+
+```json
+{
+  "status": "PASS",
+  "reason_code": "OK"
+}
+```
+
+or:
+
+```json
+{
+  "status": "REFUSED",
+  "reason_code": "RUN_UNCLASSIFIED_ACTION"
+}
+```
+
+Reason codes are stable machine-facing identifiers.
+
+The surrounding developer experience should explain what they mean in plain language.
+
+---
+
+## Example: action outside the rule
+
+Suppose the contract supports:
+
+```text
+send_payment
+```
+
+with:
+
+```text
+currency = USD
+amount <= configured domain
+```
+
+A caller attempts an undeclared action:
+
+```json
+{
+  "action_type": "change_beneficiary",
+  "parameters": {
+    "account": "12345"
+  }
+}
+```
+
+AuthContract refuses it.
+
+Developer-facing result:
+
+```text
+FAIL
+
+This action is not covered by the rule.
+
+Action
+  change_beneficiary
+
+The active rule does not declare this action.
+
+Nothing outside the declared action set is allowed implicitly.
+```
+
+Machine-facing reason:
+
+```text
+RUN_UNCLASSIFIED_ACTION
+```
+
+---
+
+## Example: rule conflict
+
+If two active rules both appear to govern the same action and no explicit precedence or composition rule resolves them, AuthContract fails closed.
+
+```text
+FAIL
+
+More than one active rule applies to this action.
+
+AuthContract cannot determine which rule should govern the action
+without inventing precedence.
+
+Resolve the conflict before shipping.
+```
+
+Machine-facing reason:
+
+```text
+CONTRACT_SCOPE_CONFLICT
+```
+
+Load order, file name, timestamp, or "first match wins" should not silently decide institutional meaning.
+
+---
+
+## Example: runtime fact cannot be trusted
+
+A rule may depend on a fact such as:
+
+```text
+secondary_approval.present == true
+```
+
+That condition is meaningless if the same agent being governed can simply assert:
+
+```json
+{
+  "secondary_approval.present": true
+}
+```
+
+AuthContract checks runtime facts before they are allowed to influence the decision.
+
+A developer-facing refusal should look like:
+
+```text
+FAIL
+
+This fact cannot be trusted from the configured source.
+
+Fact
+  secondary_approval.present
+
+Expected
+  independently established approval evidence
+
+Observed
+  assertion does not satisfy the configured evidence boundary
+
+The action was not evaluated with this fact.
+```
+
+This is enforced through verified-assertion binding: the fact gate checks the caller's claim — the value, who asserted it, and when — against independently verified context, not the claim alone. A claim that disagrees with the verified context refuses, even if the verified context alone would otherwise be admissible.
+
+---
+
+## GitHub pull-request checks
+
+AuthContract includes a GitHub-oriented merge-result gate.
+
+The important distinction is that a check should run against the composition that would actually merge—not only an isolated PR head.
+
+A stale or unverifiable merge composition must not become green.
+
+Developer-facing failure:
+
+```text
+FAIL
+
+This check was not run against the version that would actually merge.
+
+The target branch changed after this evaluation.
+
+Re-run AuthContract against the current merge result.
+```
+
+Machine-facing reason:
+
+```text
+GIT_MERGE_RESULT_UNVERIFIED
+```
+
+The repository contains a GitHub Actions workflow named:
+
+```text
+AuthContract Gate
+```
+
+The gate implementation is tested.
+
+Repository-level branch protection requiring that check is a separate GitHub configuration concern and should not be inferred merely because the workflow exists.
+
+---
+
+## PASS, FAIL, and UNRESOLVED
+
+AuthContract deliberately distinguishes three developer-relevant states.
+
+### PASS
+
+The checked behavior is supported within the currently tested AuthContract boundary.
+
+```text
+PASS
+```
+
+### FAIL
+
+A concrete condition was violated.
+
+Examples:
+
+```text
+Rule differs from source.
+Action is outside the declared domain.
+Fact cannot be admitted.
+Merge result cannot be verified.
+Two active rules conflict.
+```
+
+```text
+FAIL
+```
+
+### UNRESOLVED
+
+The available source or decision context does not justify a single executable interpretation.
+
+```text
+UNRESOLVED
+```
+
+AuthContract must not convert `UNRESOLVED` into `PASS`.
+
+---
+
+## Why source links matter
+
+A comment like this:
+
+```python
+# regulatory requirement
+if amount > 50000:
+    require_approval()
+```
+
+does not prove anything.
+
+Neither does:
+
+```yaml
+source: "policy.pdf"
+```
+
+AuthContract is designed around stronger relationships between the rule and the material that supports it.
+
+The useful question is not:
+
+> Does the rule contain a source field?
+
+It is:
+
+> Can someone inspect the exact source material that supports this exact behavior?
+
+That relationship needs to survive changes to the rule.
+
+---
+
+## Why diffs matter
+
+A rule can remain syntactically valid while changing meaning.
+
+```diff
+- threshold: 50000
++ threshold: 100000
+```
+
+A normal code review sees a changed number.
+
+AuthContract should be able to show the semantic consequence:
+
+```text
+Before
+  approval required above $50,000
+
+After
+  approval required above $100,000
+
+Source
+  still requires approval above $50,000
+
+Result
+  FAIL
+```
+
+The useful unit of review is not merely the changed text.
+
+It is the changed behavior relative to the source.
+
+---
+
+## Why runtime continuity matters
+
+The rule that passed cannot become detached from the rule that executes.
+
+Otherwise:
+
+```text
+source-linked rule A
+       ↓
+PASS
+       ↓
+something changes
+       ↓
+runtime rule B
+       ↓
+action
+```
+
+and the original proof says nothing about the action.
+
+AuthContract is designed to preserve the bindings required to detect that break.
+
+```text
+source-backed rule
+       ↓
+stable identity
+       ↓
+tested version
+       ↓
+runtime projection
+       ↓
+action check
+       ↓
+decision evidence
+```
+
+---
+
+## Why evidence matters
+
+Logs usually tell you what a system says happened.
+
+AuthContract's evidence model is intended to let an independent verifier recompute the important relationships.
+
+For example:
+
+```text
+Was this the same contract?
+
+Was this the active version?
+
+Was this the same runtime projection?
+
+Were these the facts used?
+
+Was this the exact action evaluated?
+
+Was the resulting decision preserved?
+
+Did the recorded execution result belong to that decision?
+```
+
+The standard is not:
+
+> Trust the AuthContract service.
+
+The direction is:
+
+> Re-run the evidence.
+
+---
+
+## What developers should see
+
+AuthContract's internal implementation contains concepts required for rigorous verification.
+
+Those concepts should not dominate the normal developer experience.
+
+Developers should primarily see:
+
+```text
+rule
+source
+diff
+test
+check
+failure
+commit
+merge
+runtime
+proof
+```
+
+Not an ontology lesson.
+
+Internal architecture belongs in the deeper documentation.
+
+---
+
+## What happens underneath
+
+AuthContract's developer-facing workflow is backed by several distinct technical responsibilities.
+
+At a high level:
+
+```text
+source
+  ↓
+machine-operational rule
+  ↓
+rule verification
+  ↓
+approval / activation
+  ↓
+Git merge-result check
+  ↓
+runtime projection
+  ↓
+runtime fact checks
+  ↓
+action decision
+  ↓
+reconstructable evidence
+```
+
+The Veraxis research stack uses components including OIC, ZTL, OAM, VEIP, and AEP to reason about parts of this chain.
+
+You do not need to understand those components to use the developer workflow.
+
+Their job is to make the simple developer-facing claims harder to fake.
+
+---
+
+## Design rule
+
+AuthContract follows one important principle:
+
+> **Do not silently invent meaning.**
+
+That applies throughout the system.
+
+If the source does not establish something, do not manufacture it.
+
+If two rules conflict, do not invent precedence.
+
+If a fact cannot be trusted, do not treat it as true.
+
+If the merge result cannot be verified, do not pretend the PR passed.
+
+If runtime cannot be tied back to the rule that passed, do not claim continuity.
+
+Fail closed.
+
+Make the missing information visible.
+
+Let a human resolve what requires human judgment.
+
+---
+
+## Current status
+
+AuthContract is an experimental reference implementation under active development.
+
+The current repository demonstrates and tests bounded pieces of the intended chain, including:
+
+- canonical contract identity and digest behavior;
+- separation of immutable rule meaning from sibling state;
+- deterministic projection into a declared action domain;
+- closed action classification;
+- fail-closed domain handling;
+- active/inactive rule behavior;
+- overlapping-rule conflict detection;
+- Git merge-result admissibility;
+- runtime fact admissibility bound to independently verified assertion context — the fact gate checks a caller's claim (value, asserter, timing) against verified evidence, not the claim alone;
+- a bounded runtime decision and AEP-style evidence-reconstruction path — verify the artifact, project it, admit its runtime facts, check the action, and issue a receipt on PASS — tested and accepted for one synthetic banking specimen;
+- closed, fail-closed input shapes for runtime facts, rule declarations, and the receipt's admission binding.
+
+**What this means today.** The worked examples earlier in this document — the §4.2 threshold change, the invented-rule check, the UNRESOLVED ambiguity case — describe AuthContract's target developer experience: automatically comparing a rule's behavior against its natural-language source. The current implementation exercises the mechanical trust chain beneath that experience (the pieces listed above) for one synthetic specimen. Automated natural-language source-to-rule comparison, as shown in those examples, is the product's target capability and is not yet implemented end to end.
+
+The project does **not** currently claim:
+
+- production readiness;
+- universal policy correctness;
+- general legal correctness;
+- automatic interpretation of arbitrary source documents, or automated natural-language source-to-rule comparison;
+- production-grade institutional identity or PKI;
+- universal runtime integration;
+- broad professional usability;
+- market adoption.
+
+Current results are bounded to the implemented and tested specimens.
+
+---
+
+## Current specimen
+
+The primary development specimen is a synthetic banking payment workflow.
+
+It is intentionally narrow.
+
+That makes it possible to test the complete relationship among:
+
+```text
+source-backed rule
+→ activation
+→ pull request
+→ projection
+→ runtime facts
+→ payment action
+→ decision
+→ evidence
+```
+
+without claiming a general solution before the implementation has earned one.
+
+---
+
+## Repository layout
+
+```text
+authcontract/
+    digest.py
+    facts.py
+    projection.py
+    git_gate.py
+    veip.py
+    cli.py
+    ...
+
+fixtures/
+    actions/
+    runtime/
+    ...
+
+tests/
+    ...
+
+docs/
+    DEVELOPER-LANGUAGE.md
+
+.github/workflows/
+    ci.yml
+    authcontract-gate.yml
+```
+
+Developer-facing examples and commands belong near the top of the repository.
+
+Detailed architecture, assurance records, formal invariants, design decisions, and adversarial findings belong in deeper reference documentation.
+
+---
+
+## For policy-engine users
+
+If you already use OPA/Rego, Cedar, or another policy engine, AuthContract is not asking you to replace it.
+
+A useful division of responsibilities is:
+
+```text
+AuthContract
+  Why is this the rule?
+  What source supports it?
+  Did the PR change its meaning?
+  Is the rule's runtime boundary intact?
+  Can the action be traced back to what passed?
+
+Policy engine
+  Given this rule and this input, what is the decision?
+```
+
+AuthContract can sit upstream of, around, or alongside a policy engine.
+
+The policy engine evaluates.
+
+AuthContract preserves and verifies the chain that makes the evaluated rule defensible.
+
+---
+
+## The test we care about
+
+The decisive developer test is simple.
+
+Take a repository containing:
+
+1. a rule;
+2. the source that supports it.
+
+Open a pull request.
+
+Change the rule so that it subtly departs from the source.
+
+AuthContract should catch the change in the PR and explain it in language the developer can act on.
+
+```text
+FAIL
+
+Rule changed behavior from its source.
+
+Source
+  approval required above $50,000
+
+PR
+  approval required above $100,000
+
+Do not merge.
+```
+
+Then fix the rule.
+
+```text
+PASS
+
+Rule is supported by its source.
+```
+
+Then ship it.
+
+At runtime, the system should be able to prove that the consequential action was governed by the rule that passed.
+
+That is the product.
+
+---
+
+## One sentence
+
+**AuthContract gives you proof that the rule you shipped is actually supported by the source.**

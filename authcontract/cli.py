@@ -1,16 +1,24 @@
 """`authcontract verify|project|check-action|git-gate|run-specimen|
-verify-receipt` — CLI over the digest (R01/AC-I06), projection/action-
-closure (AC-016), Git merge-result admissibility (AC-018/C-07/D-006), and
-minimal VEIP-bound runtime decision + AEP-style receipt (AC-019/C-08,
-amended by AC-020's verified assertion binding + AEP evidence continuity)
-gates.
+verify-receipt` — the AuthContract developer CLI.
 
-MVP-alpha scope only. Does not implement production provenance
-verification, real payment execution, or general VEIP/AEP correctness.
+Checks whether a rule is supported by its source, whether an action is
+covered by the rule, whether a PR's merge result was actually what got
+tested, and whether a runtime decision plus its proof receipt hold up to
+independent re-verification. Every command prints one deterministic JSON
+object and exits non-zero on any refusal — never a silently-ignored field
+that could produce a false PASS.
 
-Same fail-closed discipline as `digest.py`/`facts.py`/`projection.py`: an
-unrecognised top-level shape, action, or parameter is a refusal, never a
-silently-ignored field that could produce a false PASS.
+Bounded reference implementation, tested for one synthetic banking
+specimen. Does not implement production provenance verification, real
+payment execution, or general correctness beyond that specimen.
+
+Underneath: `verify`/`project`/`check-action` cover canonical rule
+identity (R01/AC-I06) and projection/action-closure (AC-016); `git-gate`
+covers Git merge-result admissibility (AC-018/C-07/D-006); `run-specimen`/
+`verify-receipt` cover the bounded runtime decision and AEP-style receipt
+(AC-019/C-08, amended by AC-020's verified assertion binding and AC-020A's
+declaration-shape/admission-binding closure). See docs/DEVELOPER-LANGUAGE.md
+for why this docstring leads with plain language.
 """
 
 from __future__ import annotations
@@ -357,25 +365,25 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     verify_parser = subparsers.add_parser(
-        "verify", help="Verify one bounded synthetic JSON AuthContract artifact"
+        "verify", help="Verify one rule artifact's canonical identity"
     )
     verify_parser.add_argument("fixture", help="Path to the JSON artifact")
 
     project_parser = subparsers.add_parser(
-        "project", help="Compute the deterministic operational projection of one fixture"
+        "project", help="Project a rule into its declared runtime action domain"
     )
     project_parser.add_argument("fixture", help="Path to the JSON artifact")
 
     check_action_parser = subparsers.add_parser(
         "check-action",
-        help="Check one action against a fixture's projection domain (closed mediated-action universe)",
+        help="Check whether an action is covered by a rule's declared action domain",
     )
     check_action_parser.add_argument("fixture", help="Path to the JSON artifact")
     check_action_parser.add_argument("action", help="Path to a JSON action file")
 
     git_gate_parser = subparsers.add_parser(
         "git-gate",
-        help="Adjudicate an AuthContract evaluation conclusion against verified Git merge composition",
+        help="Check a CI result against the version that would actually merge",
     )
     git_gate_parser.add_argument("context", help="Path to a JSON git-gate context file")
     git_gate_parser.add_argument(
@@ -386,7 +394,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     run_specimen_parser = subparsers.add_parser(
         "run-specimen",
-        help="Run the bounded VEIP-style runtime decision (verify -> project -> check-action -> fact admission) and issue an AEP-style receipt on ALLOW",
+        help="Run the rule/fact/action check end to end and issue a proof receipt on PASS",
     )
     run_specimen_parser.add_argument("artifact", help="Path to the JSON artifact")
     run_specimen_parser.add_argument("action", help="Path to a JSON action file")
@@ -400,7 +408,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     verify_receipt_parser = subparsers.add_parser(
         "verify-receipt",
-        help="Independently recompute an AEP-style receipt's bindings from the source artifact/action/facts and compare",
+        help="Re-run the evidence: recompute a receipt from source and compare",
     )
     verify_receipt_parser.add_argument("receipt", help="Path to a JSON receipt")
     verify_receipt_parser.add_argument("artifact", help="Path to the JSON artifact")

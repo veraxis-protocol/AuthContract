@@ -689,17 +689,37 @@ def test_a10_positive_specimen_allows_only_after_all_gates_pass():
 
 
 def test_a11_readme_matches_da647ac_exactly():
-    """A11: README.md equals the da647ac README exactly in the AC-020A
-    candidate — AC-020's developer-documentation rewrite is reverted;
-    AC-021 is the sole authorized documentation rewrite.
+    """A11: README.md carries the AC-021 developer-language freeze.
 
-    Compared against a committed reference copy
-    (fixtures/README_da647ac_reference.md, itself confirmed byte-identical
-    to `git show da647ac:README.md` at the time it was committed) rather
-    than shelling out to `git show` at test time — CI's checkout uses
-    fetch-depth: 1, so da647ac's blob is not reachable from a shallow
-    single-commit clone even though the working tree content is correct.
+    This test previously asserted README.md was byte-identical to the
+    da647ac reference. That invariant existed specifically to block
+    premature documentation edits between AC-020A and AC-021 — AC-020A's
+    own charter forbade it from touching developer documentation, and
+    AC-021 was named as the sole future authorized documentation rewrite.
+    AC-021 has now executed that rewrite, so the byte-identity check is
+    retired by design (not deleted — corrected in place) and replaced
+    with checks for the invariants AC-021 actually requires: the frozen
+    product sentence, runtime-continuity language, the claim ceiling, the
+    policy-engine distinction, and that deep ontology vocabulary
+    (OIC/ZTL/OAM/VEIP/AEP) does not lead the document ahead of the
+    developer-facing Quick start section.
     """
     readme_path = FIXTURES.parent / "README.md"
-    reference_path = FIXTURES / "README_da647ac_reference.md"
-    assert readme_path.read_text() == reference_path.read_text()
+    readme_text = readme_path.read_text()
+
+    assert (
+        "Proof that the rule you shipped is actually supported by the source."
+        in readme_text
+    )
+    assert "Re-run the evidence." in readme_text
+    assert "does **not** currently claim" in readme_text
+    assert "AuthContract is not a policy engine" in readme_text
+
+    quick_start_index = readme_text.index("## Quick start")
+    for term in ("OIC", "ZTL", "OAM", "VEIP", "AEP"):
+        term_index = readme_text.index(term)
+        assert term_index > quick_start_index, (
+            f"{term} must not appear before the '## Quick start' heading — "
+            "deep ontology vocabulary stays underneath the developer-facing "
+            "workflow, per docs/DEVELOPER-LANGUAGE.md."
+        )

@@ -442,10 +442,24 @@ def test_a8_cli_old_receipt_against_alternate_valid_admission_refused():
 def test_a11_cli_readme_matches_da647ac_exactly():
     """A11, verified at the file-system level via the same CLI test file.
 
-    Compared against a committed reference copy (see test_veip.py's
-    test_a11_readme_matches_da647ac_exactly for why this doesn't shell out
-    to `git show` at test time: CI's shallow fetch-depth: 1 checkout does
-    not have da647ac's blob reachable)."""
+    This test previously asserted README.md was byte-identical to the
+    da647ac reference — an invariant that existed only to block premature
+    documentation edits until AC-021 (the sole authorized documentation
+    rewrite) executed. AC-021 has now executed that rewrite, so this is
+    corrected in place (see test_veip.py's
+    test_a11_readme_matches_da647ac_exactly for the full rationale and the
+    canonical version of these checks) rather than deleted."""
     readme_path = ROOT / "README.md"
-    reference_path = FIXTURES / "README_da647ac_reference.md"
-    assert readme_path.read_text() == reference_path.read_text()
+    readme_text = readme_path.read_text()
+
+    assert (
+        "Proof that the rule you shipped is actually supported by the source."
+        in readme_text
+    )
+    assert "Re-run the evidence." in readme_text
+    assert "does **not** currently claim" in readme_text
+    assert "AuthContract is not a policy engine" in readme_text
+
+    quick_start_index = readme_text.index("## Quick start")
+    for term in ("OIC", "ZTL", "OAM", "VEIP", "AEP"):
+        assert readme_text.index(term) > quick_start_index
