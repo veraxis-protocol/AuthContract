@@ -27,6 +27,7 @@ from authcontract.facts import (
     FactContract,
     FactContractInvalid,
     FactCorroborationMissing,
+    FactEvidenceMismatch,
     FactFutureTimestamp,
     FactIdentityMismatch,
     FactRepresentation,
@@ -82,13 +83,34 @@ def _fact(contract, **over):
     return AssertedFact(**base)
 
 
-def _evidence(contract, **over):
+def _evidence(contract, fact=None, **over):
     """Verifier-established evidence, defaulting to what `contract` requires.
 
-    Callers who want to test a claim/verification mismatch must override
-    this independently of `_fact` — that independence is the point.
+    AC-020 extended `VerifiedEvidence` to also bind fact identity/value/
+    asserted_by/asserted_at — `admit()` now requires these to agree with the
+    caller's `AssertedFact` claim. For those four fields, this helper
+    defaults to AGREEING with `fact` when one is supplied (mirroring how a
+    genuine verifier would independently confirm what was actually
+    asserted), or to the same contract-derived defaults `_fact()` itself
+    uses otherwise. Callers who want to test a claim/verification MISMATCH
+    override the relevant field(s) explicitly via `**over` — that
+    independence is the point, unchanged from AC-012.
     """
+    if fact is not None:
+        default_fact_id = fact.fact_id
+        default_value = fact.raw_value
+        default_asserted_by = fact.asserted_by
+        default_asserted_at = fact.asserted_at
+    else:
+        default_fact_id = contract.fact_id
+        default_value = True
+        default_asserted_by = contract.issuer
+        default_asserted_at = NOW
     base = dict(
+        fact_id=default_fact_id,
+        value=default_value,
+        asserted_by=default_asserted_by,
+        asserted_at=default_asserted_at,
         issuer=contract.issuer,
         trust_basis=contract.trust_basis,
         assertion_path=contract.assertion_path,
@@ -100,7 +122,12 @@ def _evidence(contract, **over):
 
 def _admit(contract, fact, evidence=None, *, now=NOW):
     if evidence is None:
-        evidence = _evidence(contract)
+        # Auto-derive evidence that AGREES with the exact `fact` passed in —
+        # any test that overrides `_fact(...)`'s value/asserted_by/asserted_at
+        # continues to exercise the check it originally targeted (staleness,
+        # self-assertion, etc.) rather than tripping the new AC-020 A2
+        # claim/verification agreement check instead.
+        evidence = _evidence(contract, fact)
     return admit(contract, fact, evidence=evidence, governed_subject=SUBJECT, now=now)
 
 
@@ -302,8 +329,14 @@ def test_corroboration_by_governed_subject_is_collusion():
 
 def test_corroboration_collusion_is_rejected():
     c = replace(APPROVAL, self_assertion_policy="PERMITTED_WITH_CORROBORATION")
+    # asserted_by=SUBJECT must also be verified (AC-020 A2/A3) for this to
+    # exercise genuine self-assertion collusion rather than a bare mismatch.
     with pytest.raises(FactCorroborationMissing) as exc:
-        _admit(c, _fact(c, asserted_by=SUBJECT), _evidence(c, corroborated_by=SUBJECT))
+        _admit(
+            c,
+            _fact(c, asserted_by=SUBJECT),
+            _evidence(c, asserted_by=SUBJECT, corroborated_by=SUBJECT),
+        )
     assert exc.value.code == "RUN_FACT_CORROBORATION_MISSING"
 
 
@@ -315,7 +348,13 @@ def test_self_assertion_without_corroboration_is_rejected():
 
 def test_self_assertion_with_independent_corroboration_is_admitted():
     c = replace(APPROVAL, self_assertion_policy="PERMITTED_WITH_CORROBORATION")
-    assert _admit(c, _fact(c, asserted_by=SUBJECT), _evidence(c, corroborated_by=ISSUER)) is True
+    # asserted_by=SUBJECT must also be verified (AC-020 A2/A3) — otherwise
+    # this would trip the new claim/verification mismatch check instead.
+    assert _admit(
+        c,
+        _fact(c, asserted_by=SUBJECT),
+        _evidence(c, asserted_by=SUBJECT, corroborated_by=ISSUER),
+    ) is True
 
 
 def test_both_gates_apply_together():
@@ -431,3 +470,101 @@ def test_future_check_precedes_staleness_check():
     fact = _fact(APPROVAL, asserted_at=NOW + timedelta(hours=1))
     with pytest.raises(FactFutureTimestamp):
         _admit(APPROVAL, fact)
+
+
+# ------------------------------------------- AC-020 A1-A6: verified assertion binding
+#
+# F1: `admit()` previously used AssertedFact's own CLAIMED raw_value/
+# asserted_at/asserted_by/fact_id as the operative semantics, even though
+# VerifiedEvidence never bound any of them. These tests exercise the repair
+# directly at the facts.py boundary (test_veip.py/test_cli_veip.py exercise
+# the same defect at the orchestration/CLI level against the banking
+# specimen). Each constructs `fact` and `evidence` INDEPENDENTLY and
+# deliberately mismatched — auto-derivation via `_admit`'s default evidence
+# is bypassed on purpose here, since the whole point is disagreement.
+
+def test_verified_value_false_beats_claimed_value_true():
+    """D2 (facts.py level): verifier says false; caller claims true."""
+    fact = _fact(APPROVAL, raw_value=True)
+    evidence = _evidence(APPROVAL, fact, value=False)
+    with pytest.raises(FactEvidenceMismatch) as exc:
+        _admit(APPROVAL, fact, evidence)
+    assert exc.value.code == "RUN_FACT_EVIDENCE_MISMATCH"
+
+
+def test_admitted_value_is_the_verified_value_not_the_claim():
+    """A5: even when they compare equal, the returned value is bound to
+    `evidence`'s exact representation, not merely passed through from
+    `fact` — proven via two decimal strings that are numerically equal but
+    carry a different internal (trailing-zero) representation, both within
+    the contract's declared scale."""
+    fact = _fact(AMOUNT, raw_value="50000.1")
+    evidence = _evidence(AMOUNT, fact, value="50000.10")
+    result = _admit(AMOUNT, fact, evidence)
+    assert result == Decimal("50000.10")
+    assert result.as_tuple() == Decimal("50000.10").as_tuple()
+    assert result.as_tuple() != Decimal("50000.1").as_tuple()
+
+
+def test_verified_asserted_by_disagreeing_with_claim_is_rejected():
+    """D1 (facts.py level): the TRUE verified asserter is the governed
+    subject, but the caller claims a third party asserted it — caught by
+    the claim/verification agreement check (A2) before self-assertion
+    policy is even evaluated; the true asserter being the governed subject
+    means self-assertion detection (A3) would independently also refuse
+    this scenario if the mismatch check were somehow bypassed."""
+    fact = _fact(APPROVAL, asserted_by=ISSUER)  # caller claims a third party
+    evidence = _evidence(APPROVAL, fact, asserted_by=SUBJECT)  # verifier: it was the governed subject
+    with pytest.raises(FactEvidenceMismatch) as exc:
+        _admit(APPROVAL, fact, evidence)
+    assert exc.value.code == "RUN_FACT_EVIDENCE_MISMATCH"
+
+
+def test_verified_stale_time_beats_claimed_fresh_time():
+    """D3 (facts.py level): verifier's assertion time is stale; caller
+    claims a fresh one. Caught by the agreement check before staleness is
+    even evaluated — a caller cannot launder a stale fact by relabelling
+    its own claimed timestamp."""
+    fact = _fact(APPROVAL, asserted_at=NOW - timedelta(minutes=1))  # claims fresh
+    evidence = _evidence(APPROVAL, fact, asserted_at=NOW - timedelta(minutes=16))  # verified: stale
+    with pytest.raises(FactEvidenceMismatch) as exc:
+        _admit(APPROVAL, fact, evidence)
+    assert exc.value.code == "RUN_FACT_EVIDENCE_MISMATCH"
+
+
+def test_evidence_fact_id_disagreeing_with_contract_is_rejected():
+    """D4 / A6: evidence verified for a DIFFERENT fact cannot be replayed
+    against this contract, even when the caller's own fact_id claim matches
+    the contract exactly."""
+    fact = _fact(APPROVAL)  # fact.fact_id == APPROVAL.fact_id, as required
+    evidence = _evidence(APPROVAL, fact, fact_id="unrelated.other.fact")
+    with pytest.raises(FactIdentityMismatch) as exc:
+        _admit(APPROVAL, fact, evidence)
+    assert exc.value.code == "RUN_FACT_IDENTITY_MISMATCH"
+
+
+def test_evidence_replayed_across_fact_ids_is_rejected_even_when_value_true():
+    """A6, hostile framing: genuine, fresh, correctly-issued VERIFIED
+    evidence for one fact cannot satisfy a DIFFERENT contract's fact_id,
+    even when the verified value would otherwise be exactly what that other
+    contract wants."""
+    other = replace(APPROVAL, fact_id="some.other.fact")
+    fact = _fact(APPROVAL)
+    evidence = _evidence(APPROVAL, fact, fact_id=other.fact_id, value=True)
+    with pytest.raises(FactIdentityMismatch):
+        _admit(APPROVAL, fact, evidence)
+
+
+def test_claimed_asserted_by_alone_no_longer_drives_self_assertion():
+    """The AC-020 defect, directly: before this repair, a caller claiming
+    asserted_by=SUBJECT while evidence.asserted_by legitimately verified a
+    THIRD PARTY would incorrectly self-refuse (false positive) — or worse,
+    a caller claiming a third party while the true verified asserter was
+    the governed subject would incorrectly ALLOW (false negative, the real
+    F1 defect). Confirms the true-negative direction no longer occurs: a
+    verified third-party asserter is not self-assertion merely because the
+    caller's own claim disagrees, since disagreement itself refuses first."""
+    fact = _fact(APPROVAL, asserted_by=SUBJECT)  # caller falsely claims the subject asserted it
+    evidence = _evidence(APPROVAL, fact, asserted_by=ISSUER)  # verifier: it was really the issuer
+    with pytest.raises(FactEvidenceMismatch):
+        _admit(APPROVAL, fact, evidence)

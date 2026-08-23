@@ -16,6 +16,23 @@ Also enforces the surviving form of R02: the original float64 counterexample
 was refuted against OPA v1.19.1 (0/5 divergences), because OPA preserves
 json.Number. The real hazard is a host decoder flattening decimal(scale)
 before the engine sees it. That is a representation failure, caught here.
+
+AC-020 / F1 repair: AC-012 already established that issuer/trust-basis/path/
+corroborator decisions must use `VerifiedEvidence`, never `AssertedFact`'s own
+claimed text. It did not establish that VERIFIED context binds fact identity,
+the operative value, the asserting identity, or the assertion timestamp —
+`admit()` used `fact.raw_value`/`fact.asserted_at`/`fact.asserted_by`/
+`fact.fact_id` (all caller CLAIMS) for those decisions, which let a caller
+substitute a false value/time/asserter/identity while presenting an otherwise
+matching verifier context. `VerifiedEvidence` now also binds fact identity,
+the verified operative value, the verified asserting identity, and the
+verified assertion timestamp; `admit()` requires the caller's claim to agree
+with this verified context (else `FactEvidenceMismatch`, AC-020 A2), and every
+identity/freshness/self-assertion/value decision is now made against the
+VERIFIED fields, never the claimed ones. `VerifiedEvidence` remains an
+interface boundary supplied by a trusted verifier — this proves internal
+consistency between what was claimed and what was verified, not signatures,
+channel authentication, or institutional provenance (AC-020 A7).
 """
 
 from __future__ import annotations
@@ -88,6 +105,15 @@ class FactTimeUnverifiable(FactInadmissible):
     code = "RUN_FACT_TIME_UNVERIFIABLE"
 
 
+class FactEvidenceMismatch(FactInadmissible):
+    """AC-020 A2 — the caller-claimed `AssertedFact` semantics (operative
+    value, asserting identity, or assertion timestamp) disagree with the
+    verifier-established `VerifiedEvidence` context. A caller cannot
+    substitute a false value/time/asserter while presenting an otherwise
+    matching verifier context."""
+    code = "RUN_FACT_EVIDENCE_MISMATCH"
+
+
 @dataclass(frozen=True)
 class FactContract:
     """AC-I15 declaration. Every field is required; none defaults silently."""
@@ -135,7 +161,21 @@ class VerifiedEvidence:
     separation between "claimed" and "verified" suitable for MVP-alpha: a
     real verifier is expected to construct this; nothing here performs
     cryptographic verification itself.
+
+    AC-020 A1 extends this beyond issuer/trust_basis/assertion_path/
+    corroborated_by to also bind the exact assertion semantics `admit()`
+    actually adjudicates: which fact this evidence is bound to, what the
+    verified operative value is, who the verified asserting identity is, and
+    when the verified assertion occurred. Evidence verified for one
+    `fact_id` must never be replayable as another (A6); `value` is expressed
+    in the same wire-format domain as `AssertedFact.raw_value` and decoded
+    via the governing `FactContract.value_type`, the same way an asserted
+    value is (A1/A5).
     """
+    fact_id: str
+    value: Any
+    asserted_by: str
+    asserted_at: datetime
     issuer: str
     trust_basis: str
     assertion_path: str
@@ -162,67 +202,68 @@ def _validate_contract(contract: FactContract) -> None:
         )
 
 
-def _check_representation(contract: FactContract, fact: AssertedFact) -> Any:
-    """Reject lossy transport. Returns the losslessly-decoded value."""
-    if fact.wire_representation != contract.wire_representation:
-        raise FactRepresentation(
-            f"{FactRepresentation.code}: {contract.fact_id} declared "
-            f"{contract.wire_representation}, arrived as {fact.wire_representation}"
-        )
-
+def _decode_raw_value(contract: FactContract, raw_value: Any, *, source: str) -> Any:
+    """Decode a raw wire-format value into its typed Python form, per
+    `contract.value_type`. Shared by both the caller-claimed
+    `AssertedFact.raw_value` (via `_check_representation`, after its own
+    `wire_representation` match) and the verifier-established
+    `VerifiedEvidence.value` (AC-020 A1/A5) — the same lossless-decode rules
+    apply to both, so a value can never be judged before it is known to be
+    representable at all.
+    """
     decimal_match = _DECIMAL_TYPE.match(contract.value_type)
     if decimal_match:
         scale = int(decimal_match.group(1))
         # A float has already lost information before we can inspect it.
-        if isinstance(fact.raw_value, float):
+        if isinstance(raw_value, float):
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} declared "
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) declared "
                 f"{contract.value_type} but arrived as float — host decoder "
                 "flattened the value before evaluation"
             )
-        if isinstance(fact.raw_value, bool):
+        if isinstance(raw_value, bool):
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} declared "
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) declared "
                 f"{contract.value_type} but arrived as bool"
             )
         try:
-            value = Decimal(str(fact.raw_value))
+            value = Decimal(str(raw_value))
         except InvalidOperation as exc:
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} is not decimal"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) is not decimal"
             ) from exc
         if not value.is_finite():
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} is not finite"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) is not finite"
             )
         if -value.as_tuple().exponent > scale:
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} exceeds declared "
-                f"scale {scale}"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) exceeds "
+                f"declared scale {scale}"
             )
         return value
 
     if contract.value_type == "boolean":
-        if not isinstance(fact.raw_value, bool):
+        if not isinstance(raw_value, bool):
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} is not boolean"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) is not boolean"
             )
-        return fact.raw_value
+        return raw_value
 
     if contract.value_type == "integer":
         # bool is a subclass of int; reject it explicitly.
-        if isinstance(fact.raw_value, bool) or not isinstance(fact.raw_value, int):
+        if isinstance(raw_value, bool) or not isinstance(raw_value, int):
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} is not an integer"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) is not an integer"
             )
-        return fact.raw_value
+        return raw_value
 
     if contract.value_type == "string":
-        if not isinstance(fact.raw_value, str):
+        if not isinstance(raw_value, str):
             raise FactRepresentation(
-                f"{FactRepresentation.code}: {contract.fact_id} is not a string"
+                f"{FactRepresentation.code}: {contract.fact_id} ({source}) is not a string"
             )
-        return fact.raw_value
+        return raw_value
 
     # Unreachable: _validate_contract already refused unknown types. Kept as a
     # fail-closed backstop so a future type addition cannot silently pass through.
@@ -232,44 +273,62 @@ def _check_representation(contract: FactContract, fact: AssertedFact) -> Any:
     )
 
 
-def _check_corroboration(
-    contract: FactContract, fact: AssertedFact, evidence: VerifiedEvidence
-) -> None:
+def _check_representation(contract: FactContract, fact: AssertedFact) -> Any:
+    """Reject lossy transport for the caller-claimed value. Returns the
+    losslessly-decoded value."""
+    if fact.wire_representation != contract.wire_representation:
+        raise FactRepresentation(
+            f"{FactRepresentation.code}: {contract.fact_id} declared "
+            f"{contract.wire_representation}, arrived as {fact.wire_representation}"
+        )
+    return _decode_raw_value(contract, fact.raw_value, source="asserted")
+
+
+def _check_corroboration(contract: FactContract, evidence: VerifiedEvidence) -> None:
     """Independent confirmation. Independence is enforced, not assumed.
 
-    Corroborator identity comes from `evidence`, never from the fact's own
-    claimed `corroborated_by` — a self-asserted corroborator is not
-    corroboration (AC-012 finding 1).
+    Corroborator identity AND asserting identity both come from `evidence`
+    — never from the fact's own claimed `corroborated_by`/`asserted_by`. A
+    self-asserted corroborator is not corroboration (AC-012 finding 1), and
+    independence must be judged against the VERIFIED asserting identity, not
+    a caller's claim about who asserted the fact (AC-020 A3) — a caller
+    cannot manufacture apparent independence by lying about the asserter.
     """
     if not evidence.corroborated_by:
         raise FactCorroborationMissing(
             f"{FactCorroborationMissing.code}: {contract.fact_id} requires "
             "corroboration; none verified"
         )
-    if evidence.corroborated_by == fact.asserted_by:
+    if evidence.corroborated_by == evidence.asserted_by:
         raise FactCorroborationMissing(
             f"{FactCorroborationMissing.code}: {contract.fact_id} corroboration "
-            "is not independent — corroborator is the asserting party"
+            "is not independent — corroborator is the verified asserting party"
         )
 
 
-def _check_freshness(contract: FactContract, fact: AssertedFact, now: datetime) -> None:
+def _check_freshness(contract: FactContract, asserted_at: datetime, now: datetime) -> None:
     """Time validation. Fails closed on a future timestamp or an
     unverifiable comparison, rather than raising an uncontrolled exception.
+
+    `asserted_at` must be the VERIFIED assertion timestamp (AC-020 A4) — by
+    the time this is called, `admit()` has already required it to agree
+    exactly with the caller's claimed `AssertedFact.asserted_at`, so a
+    caller cannot make stale evidence fresh merely by relabelling its own
+    claimed timestamp.
     """
     try:
-        age = now - fact.asserted_at
+        age = now - asserted_at
     except TypeError as exc:
         raise FactTimeUnverifiable(
-            f"{FactTimeUnverifiable.code}: {contract.fact_id} asserted_at "
-            f"({fact.asserted_at!r}) is not comparable to `now` ({now!r}) — "
+            f"{FactTimeUnverifiable.code}: {contract.fact_id} verified assertion "
+            f"time ({asserted_at!r}) is not comparable to `now` ({now!r}) — "
             "naive/aware datetime mismatch"
         ) from exc
 
     if age < timedelta(0):
         raise FactFutureTimestamp(
-            f"{FactFutureTimestamp.code}: {contract.fact_id} asserted_at is "
-            f"{-age} in the future relative to `now`"
+            f"{FactFutureTimestamp.code}: {contract.fact_id} verified assertion "
+            f"time is {-age} in the future relative to `now`"
         )
 
     if age > contract.freshness:
@@ -287,22 +346,38 @@ def admit(
     governed_subject: str,
     now: datetime,
 ) -> Any:
-    """Run the AC-I15 admissibility gate. Returns the value, or raises.
+    """Run the AC-I15 admissibility gate. Returns the VERIFIED value, or raises.
 
     `evidence` must come from the trusted verification boundary, never be
     derived from `fact`'s own claimed fields — issuer, trust basis,
-    assertion path and corroborator identity are all decided against
-    `evidence`, not against the asserting party's text (AC-012 finding 1).
+    assertion path, corroborator identity, fact identity, operative value,
+    asserting identity, and assertion timestamp are ALL decided against
+    `evidence`, never against the asserting party's own text (AC-012
+    finding 1; AC-020 A1-A6). `fact` is required to agree with `evidence`
+    on identity/value/asserter/time (else `FactEvidenceMismatch`) — a caller
+    cannot substitute a false value, time, asserter, or fact identity while
+    presenting an otherwise matching verifier context.
 
     Check order is deliberate:
-      1. contract well-formedness — never evaluate against a broken contract
-      2. fact identity          — never evaluate the wrong fact
-      3. representation         — a lossily transported value cannot be judged
-      4. issuer / trust basis / path (verified, not claimed)
-      5. freshness — fails closed on future timestamps and on unverifiable
-         (naive/aware) comparisons, not just staleness
-      6. self-assertion policy
-      7. corroboration requirement (verified corroborator identity)
+      1. contract well-formedness  — never evaluate against a broken contract
+      2. fact identity vs contract — never evaluate the wrong fact
+      3. evidence identity vs contract — evidence verified for one fact_id
+         cannot govern another (A6)
+      4. representation (both claimed and verified value) — a lossily
+         transported value cannot be judged
+      5. issuer / trust basis / path (verified, not claimed)
+      6. claimed-vs-verified agreement: value, asserted_by, asserted_at
+         (A2) — fails closed on ANY disagreement
+      7. freshness, using the VERIFIED assertion time (A4) — fails closed
+         on future timestamps and on unverifiable (naive/aware) comparisons,
+         not just staleness
+      8. self-assertion policy, using the VERIFIED asserting identity (A3)
+      9. corroboration requirement (verified corroborator identity)
+
+    Returns the VERIFIED operative value (A5), not the caller's raw claim —
+    by this point the two are already proven equal, but binding the return
+    value to the verified side keeps the invariant explicit rather than
+    incidental.
     """
     _validate_contract(contract)
 
@@ -312,7 +387,15 @@ def admit(
             f"but fact asserts '{fact.fact_id}'"
         )
 
-    value = _check_representation(contract, fact)
+    if evidence.fact_id != contract.fact_id:
+        raise FactIdentityMismatch(
+            f"{FactIdentityMismatch.code}: contract governs '{contract.fact_id}' "
+            f"but verified evidence is bound to '{evidence.fact_id}' — evidence "
+            "verified for one fact cannot be replayed as another (AC-020 A6)"
+        )
+
+    asserted_value = _check_representation(contract, fact)
+    verified_value = _decode_raw_value(contract, evidence.value, source="verified")
 
     if evidence.issuer != contract.issuer:
         raise FactUnattested(
@@ -333,17 +416,39 @@ def admit(
             f"{contract.assertion_path}, verified path is {evidence.assertion_path}"
         )
 
-    _check_freshness(contract, fact, now)
+    if asserted_value != verified_value:
+        raise FactEvidenceMismatch(
+            f"{FactEvidenceMismatch.code}: {contract.fact_id} claimed value "
+            f"{asserted_value!r} disagrees with verifier-established value "
+            f"{verified_value!r}"
+        )
 
-    if fact.asserted_by == governed_subject:
+    if fact.asserted_by != evidence.asserted_by:
+        raise FactEvidenceMismatch(
+            f"{FactEvidenceMismatch.code}: {contract.fact_id} claimed asserted_by "
+            f"{fact.asserted_by!r} disagrees with verified asserting identity "
+            f"{evidence.asserted_by!r}"
+        )
+
+    if fact.asserted_at != evidence.asserted_at:
+        raise FactEvidenceMismatch(
+            f"{FactEvidenceMismatch.code}: {contract.fact_id} claimed asserted_at "
+            f"{fact.asserted_at!r} disagrees with verified assertion time "
+            f"{evidence.asserted_at!r}"
+        )
+
+    _check_freshness(contract, evidence.asserted_at, now)
+
+    if evidence.asserted_by == governed_subject:
         policy = contract.self_assertion_policy
         if policy == "PROHIBITED":
             raise FactSelfAsserted(
                 f"{FactSelfAsserted.code}: {contract.fact_id} was asserted by "
-                f"the governed subject '{governed_subject}'; policy is PROHIBITED"
+                f"the governed subject '{governed_subject}' (verified); policy "
+                "is PROHIBITED"
             )
         if policy == "PERMITTED_WITH_CORROBORATION":
-            _check_corroboration(contract, fact, evidence)
+            _check_corroboration(contract, evidence)
             if evidence.corroborated_by == governed_subject:
                 raise FactCorroborationMissing(
                     f"{FactCorroborationMissing.code}: {contract.fact_id} "
@@ -352,11 +457,11 @@ def admit(
 
     # Applies regardless of who asserted the fact (AC-009 finding 5).
     if contract.corroboration_required:
-        _check_corroboration(contract, fact, evidence)
+        _check_corroboration(contract, evidence)
         if evidence.corroborated_by == governed_subject:
             raise FactCorroborationMissing(
                 f"{FactCorroborationMissing.code}: {contract.fact_id} "
                 "corroboration collusion — corroborator is the governed subject"
             )
 
-    return value
+    return verified_value

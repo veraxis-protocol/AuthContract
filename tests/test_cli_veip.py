@@ -1,6 +1,6 @@
-"""AC-019 / C-08 CLI conformance: `authcontract run-specimen` and
-`authcontract verify-receipt`. Mirrors the style of test_cli_projection.py
-and test_git_gate.py."""
+"""AC-019 / C-08, amended by AC-020 — CLI conformance: `authcontract
+run-specimen` and `authcontract verify-receipt`. Mirrors the style of
+test_cli_projection.py and test_git_gate.py."""
 
 import json
 import subprocess
@@ -17,6 +17,8 @@ RUNTIME = FIXTURES / "runtime"
 
 ARTIFACT = FIXTURES / "banking_payment_specimen.json"
 SUSPENDED_ARTIFACT = FIXTURES / "banking_payment_specimen_suspended.json"
+DUPLICATE_REQUIRED_FACT_ARTIFACT = FIXTURES / "banking_payment_specimen_duplicate_required_fact.json"
+BAD_CORROBORATION_REQUIRED_ARTIFACT = FIXTURES / "banking_payment_specimen_bad_corroboration_required.json"
 ACTION = FIXTURES / "actions" / "send_payment_valid.json"
 UNKNOWN_ACTION = FIXTURES / "actions" / "send_payment_unknown_action_type.json"
 DOMAIN_ESCAPE_ACTION = FIXTURES / "actions" / "send_payment_unknown_parameter.json"
@@ -48,6 +50,15 @@ def test_run_specimen_cli_matches_committed_golden_receipt():
     ("facts_lossy_representation.json", "RUN_FACT_REPRESENTATION"),
     ("facts_future_timestamp.json", "RUN_FACT_FUTURE_TIMESTAMP"),
     ("facts_naive_timestamp.json", "RUN_FACT_TIME_UNVERIFIABLE"),
+    # AC-020 D1-D4, D9, D11 at the CLI level.
+    ("facts_verified_asserter_mismatch.json", "RUN_FACT_EVIDENCE_MISMATCH"),
+    ("facts_verified_value_mismatch.json", "RUN_FACT_EVIDENCE_MISMATCH"),
+    ("facts_verified_time_stale_claimed_fresh.json", "RUN_FACT_EVIDENCE_MISMATCH"),
+    ("facts_verified_fact_id_mismatch.json", "RUN_FACT_IDENTITY_MISMATCH"),
+    ("facts_duplicate_fact_id.json", "VEIP_MALFORMED_INPUT"),
+    ("facts_unknown_bundle_field.json", "VEIP_MALFORMED_INPUT"),
+    ("facts_unknown_fact_field.json", "VEIP_MALFORMED_INPUT"),
+    ("facts_unknown_evidence_field.json", "VEIP_MALFORMED_INPUT"),
 ])
 def test_run_specimen_cli_negative_fact_paths(negative_facts, expected_reason):
     result, passed = run_specimen_cli(
@@ -75,6 +86,24 @@ def test_run_specimen_cli_domain_escape():
     result, passed = run_specimen_cli(str(ARTIFACT), str(DOMAIN_ESCAPE_ACTION), str(FACTS_VALID), "NOT_EXECUTED")
     assert passed is False
     assert result["reason_code"] == "RUN_DOMAIN_ESCAPE"
+
+
+def test_run_specimen_cli_duplicate_required_facts_declaration():
+    """AC-020 D10, at the CLI level."""
+    result, passed = run_specimen_cli(
+        str(DUPLICATE_REQUIRED_FACT_ARTIFACT), str(ACTION), str(FACTS_VALID), "NOT_EXECUTED"
+    )
+    assert passed is False
+    assert result["reason_code"] == "VEIP_MALFORMED_INPUT"
+
+
+def test_run_specimen_cli_non_boolean_corroboration_required():
+    """AC-020 D12, at the CLI level."""
+    result, passed = run_specimen_cli(
+        str(BAD_CORROBORATION_REQUIRED_ARTIFACT), str(ACTION), str(FACTS_VALID), "NOT_EXECUTED"
+    )
+    assert passed is False
+    assert result["reason_code"] == "VEIP_MALFORMED_INPUT"
 
 
 def test_run_specimen_cli_exit_code_via_main(capsys):
@@ -157,13 +186,16 @@ def tampered_receipt_factory(tmp_path):
     ("projection_digest", "sha256:" + "1" * 64),
     ("runtime_fact_set_digest", "sha256:" + "2" * 64),
     ("exact_action_digest", "sha256:" + "3" * 64),
+    ("admission_digest", "sha256:" + "5" * 64),
     ("decision", "DENY"),
     ("execution_result", "NOT_EXECUTED"),
+    ("decision_time", "2099-01-01T00:00:00+00:00"),
     ("receipt_digest", "sha256:" + "4" * 64),
 ])
 def test_cli_b8_mutation_matrix(tampered_receipt_factory, field, bad_value):
-    """Tests 1-7 of B8 (each bound field) plus receipt_digest itself, at
-    the CLI level, via `authcontract verify-receipt`."""
+    """Tests 1-7 of B8 (each bound field, extended with AC-020's
+    admission_digest/decision_time) plus receipt_digest itself, at the CLI
+    level, via `authcontract verify-receipt`."""
     receipt_path = tampered_receipt_factory(**{field: bad_value})
     result, passed = verify_receipt_cli(str(receipt_path), str(ARTIFACT), str(ACTION), str(FACTS_VALID))
     assert passed is False
@@ -196,6 +228,7 @@ def test_cli_b8_admitted_fact_value_changed_receipt_unchanged(tmp_path):
     """B8 test 8."""
     facts = json.loads(FACTS_VALID.read_text())
     facts["facts"][0]["raw_value"] = False
+    facts["facts"][0]["evidence"]["value"] = False
     facts_path = tmp_path / "mutated_facts.json"
     facts_path.write_text(json.dumps(facts))
     result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(ARTIFACT), str(ACTION), str(facts_path))
@@ -224,6 +257,50 @@ def test_cli_b8_repeated_verification_is_deterministic():
     r2, p2 = verify_receipt_cli(str(RECEIPT_VALID), str(ARTIFACT), str(ACTION), str(FACTS_VALID))
     assert p1 is True and p2 is True
     assert r1 == r2
+
+
+# --------------------------------------------------- AC-020 D5-D8 (CLI level)
+
+def test_cli_d5_verified_asserted_by_changed_receipt_unchanged_refuses(tmp_path):
+    facts = json.loads(FACTS_VALID.read_text())
+    facts["facts"][0]["asserted_by"] = "TREASURY_APPROVAL_SERVICE_V2"
+    facts["facts"][0]["evidence"]["asserted_by"] = "TREASURY_APPROVAL_SERVICE_V2"
+    facts_path = tmp_path / "mutated_facts.json"
+    facts_path.write_text(json.dumps(facts))
+    result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(ARTIFACT), str(ACTION), str(facts_path))
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
+
+
+def test_cli_d6_verified_asserted_at_changed_receipt_unchanged_refuses(tmp_path):
+    facts = json.loads(FACTS_VALID.read_text())
+    facts["facts"][0]["asserted_at"] = "2026-08-23T00:06:00+00:00"
+    facts["facts"][0]["evidence"]["asserted_at"] = "2026-08-23T00:06:00+00:00"
+    facts_path = tmp_path / "mutated_facts.json"
+    facts_path.write_text(json.dumps(facts))
+    result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(ARTIFACT), str(ACTION), str(facts_path))
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
+
+
+def test_cli_d7_decision_time_changed_receipt_unchanged_refuses(tmp_path):
+    facts = json.loads(FACTS_VALID.read_text())
+    facts["now"] = "2026-08-23T00:11:00+00:00"
+    facts_path = tmp_path / "mutated_facts.json"
+    facts_path.write_text(json.dumps(facts))
+    result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(ARTIFACT), str(ACTION), str(facts_path))
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
+
+
+def test_cli_d8_admission_mutation_receipt_unchanged_refuses(tmp_path):
+    artifact = json.loads(ARTIFACT.read_text())
+    artifact["admission"]["approvals"] = [{"approval_id": "approval:xyz", "approver": "ops-lead"}]
+    artifact_path = tmp_path / "mutated_artifact.json"
+    artifact_path.write_text(json.dumps(artifact))
+    result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(artifact_path), str(ACTION), str(FACTS_VALID))
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
 
 
 def test_verify_receipt_repeated_cli_invocation_identical_stdout(capsys):

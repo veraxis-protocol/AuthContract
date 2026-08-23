@@ -2,8 +2,8 @@
 
 Composes the existing, unmodified gates — digest.verify_artifact (R01/
 AC-I06) via projection.project, projection.check_action (AC-016/AC-017),
-and facts.admit (AC-I15/AC-012) — into one bounded orchestration path for
-the synthetic banking specimen. This module never reimplements or
+and facts.admit (AC-I15/AC-012/AC-020) — into one bounded orchestration path
+for the synthetic banking specimen. This module never reimplements or
 reinterprets any of those gates' semantics; it only sequences them and, if
 every one of them admits, produces a cryptographically bound receipt.
 
@@ -25,18 +25,37 @@ fact `secondary_approval.present` beyond what already independently holds:
 both must pass their own gate for ALLOW; neither implies the other.
 
 The receipt binds contract_digest, activation_id, projection_digest,
-runtime_fact_set_digest, exact_action_digest, decision, and
-execution_result, plus a receipt_digest over exactly those seven fields —
-deliberately never over bytes containing itself, the same structural
-discipline digest.py already enforces for contract_digest/R01. All digests
-use RFC 8785 JCS + SHA-256, consistent with the repository's existing
-digest discipline.
+runtime_fact_set_digest, exact_action_digest, admission_digest, decision,
+execution_result, and decision_time, plus a receipt_digest over exactly
+those nine fields — deliberately never over bytes containing itself, the
+same structural discipline digest.py already enforces for contract_digest/
+R01. All digests use RFC 8785 JCS + SHA-256, consistent with the
+repository's existing digest discipline.
 
 execution_result is a caller-chosen, bounded synthetic label (see
 ALLOWED_EXECUTION_RESULTS) representing what happened AFTER an ALLOW
 decision. This module never claims a real payment/bank side effect
 occurred, never performs one, and never claims production institutional
 authorization or cryptographic provenance verification.
+
+AC-020 / C-08 amendment (F2 repair): the AC-019 receipt omitted
+decision-relevant temporal/assertion/admission context, so a caller could
+mutate any of them without changing the receipt. This amendment:
+  - binds `decision_time` — the exact evaluation time used for freshness;
+  - extends `runtime_fact_set_digest` to also bind each admitted fact's
+    VERIFIED asserting identity and VERIFIED assertion time (AC-020 C2),
+    consistent with facts.py now sourcing those from VerifiedEvidence;
+  - adds `admission_digest` — a deterministic digest over the artifact's
+    exact `admission` sibling object (AC-020 C3). This is evidence
+    continuity only: it proves which admission/approval context
+    accompanied the decision, never that the admission constitutes valid
+    institutional authority. `contract_digest` remains scoped to `contract`
+    only and is unaffected by admission content (R01 unchanged).
+  - the fact bundle's runtime shape is now closed (AC-020 B1-B4): duplicate
+    runtime fact_ids, duplicate contract required_facts declarations, any
+    unrecognised bundle/fact/evidence field, and a non-boolean
+    `corroboration_required` declaration all refuse rather than being
+    silently accepted.
 """
 
 from __future__ import annotations
@@ -73,15 +92,18 @@ ALLOWED_EXECUTION_RESULTS = frozenset({"NOT_EXECUTED", "SIMULATED_SUCCESS", "SIM
 #: The receipt's exact schema. An unknown field is refused, not dropped;
 #: every one of these is mandatory (receipt_digest included — AC-019 B3
 #: calls it "recommended if cleanly bounded"; it is cleanly bounded here,
-#: so it is required like the rest).
+#: so it is required like the rest). AC-020 C1/C3 add decision_time and
+#: admission_digest.
 RECEIPT_REQUIRED_KEYS = frozenset({
     "contract_digest",
     "activation_id",
     "projection_digest",
     "runtime_fact_set_digest",
     "exact_action_digest",
+    "admission_digest",
     "decision",
     "execution_result",
+    "decision_time",
     "receipt_digest",
 })
 #: The subset that receipt_digest itself is computed over — never including
@@ -93,8 +115,10 @@ _RECEIPT_PAYLOAD_KEYS = (
     "projection_digest",
     "runtime_fact_set_digest",
     "exact_action_digest",
+    "admission_digest",
     "decision",
     "execution_result",
+    "decision_time",
 )
 
 
@@ -171,8 +195,34 @@ def _digest_payload(payload: dict[str, Any]) -> str:
     return "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
 
 
+#: Closed runtime shape (AC-020 B3): unrecognised fields at any of these
+#: three levels refuse rather than being silently dropped.
+_BUNDLE_ALLOWED_KEYS = frozenset({"now", "facts"})
+_FACT_ENTRY_ALLOWED_KEYS = frozenset({
+    "fact_id", "raw_value", "wire_representation", "asserted_by", "asserted_at",
+    "claimed_issuer", "claimed_trust_basis", "claimed_assertion_path",
+    "claimed_corroborated_by", "evidence",
+})
+_EVIDENCE_ALLOWED_KEYS = frozenset({
+    "fact_id", "value", "asserted_by", "asserted_at",
+    "issuer", "trust_basis", "assertion_path", "corroborated_by",
+})
+
+
 def _build_fact_contract(declared: dict[str, Any]) -> FactContract:
     from datetime import timedelta
+
+    if "corroboration_required" in declared:
+        corroboration_required = declared["corroboration_required"]
+        if not isinstance(corroboration_required, bool):
+            # AC-020 B4: no truthiness coercion — bool("false") is True, and
+            # a declaration that says "false" must never be read as True.
+            raise ValueError(
+                "corroboration_required must be a boolean, got "
+                f"{corroboration_required!r}"
+            )
+    else:
+        corroboration_required = False
 
     return FactContract(
         fact_id=declared["fact_id"],
@@ -183,7 +233,7 @@ def _build_fact_contract(declared: dict[str, Any]) -> FactContract:
         assertion_path=declared["assertion_path"],
         self_assertion_policy=declared["self_assertion_policy"],
         wire_representation=declared["wire_representation"],
-        corroboration_required=bool(declared.get("corroboration_required", False)),
+        corroboration_required=corroboration_required,
     )
 
 
@@ -191,9 +241,18 @@ def _parse_fact_bundle(
     raw: Any,
 ) -> tuple[datetime | None, dict[str, tuple[AssertedFact, VerifiedEvidence]], str | None]:
     """Returns (now, {fact_id: (AssertedFact, VerifiedEvidence)}, None) on
-    success, or (None, {}, error_message) on any malformation."""
+    success, or (None, {}, error_message) on any malformation.
+
+    AC-020 B1/B3: refuses a duplicate runtime fact_id (never silently
+    overwrites by dict-insertion order) and any unrecognised field at the
+    bundle/fact-entry/evidence level.
+    """
     if not isinstance(raw, dict):
         return None, {}, "facts/evidence bundle must be a JSON object"
+
+    unknown_top = set(raw) - _BUNDLE_ALLOWED_KEYS
+    if unknown_top:
+        return None, {}, f"facts/evidence bundle has unsupported field(s): {sorted(unknown_top)}"
 
     now_raw = raw.get("now")
     if not isinstance(now_raw, str):
@@ -211,6 +270,11 @@ def _parse_fact_bundle(
     for i, item in enumerate(facts_raw):
         if not isinstance(item, dict):
             return None, {}, f"facts[{i}] must be an object"
+
+        unknown_fact = set(item) - _FACT_ENTRY_ALLOWED_KEYS
+        if unknown_fact:
+            return None, {}, f"facts[{i}] has unsupported field(s): {sorted(unknown_fact)}"
+
         try:
             asserted_at = datetime.fromisoformat(item["asserted_at"])
             fact = AssertedFact(
@@ -227,7 +291,17 @@ def _parse_fact_bundle(
             ev_raw = item["evidence"]
             if not isinstance(ev_raw, dict):
                 return None, {}, f"facts[{i}].evidence must be an object"
+
+            unknown_ev = set(ev_raw) - _EVIDENCE_ALLOWED_KEYS
+            if unknown_ev:
+                return None, {}, f"facts[{i}].evidence has unsupported field(s): {sorted(unknown_ev)}"
+
+            verified_asserted_at = datetime.fromisoformat(ev_raw["asserted_at"])
             evidence = VerifiedEvidence(
+                fact_id=ev_raw["fact_id"],
+                value=ev_raw["value"],
+                asserted_by=ev_raw["asserted_by"],
+                asserted_at=verified_asserted_at,
                 issuer=ev_raw["issuer"],
                 trust_basis=ev_raw["trust_basis"],
                 assertion_path=ev_raw["assertion_path"],
@@ -235,6 +309,10 @@ def _parse_fact_bundle(
             )
         except (KeyError, TypeError, ValueError) as exc:
             return None, {}, f"facts[{i}] is malformed: {exc}"
+
+        if fact.fact_id in entries:
+            return None, {}, f"duplicate runtime fact_id {fact.fact_id!r} in facts bundle"
+
         entries[fact.fact_id] = (fact, evidence)
 
     return now, entries, None
@@ -294,9 +372,26 @@ def run_specimen(
     subject = contract.get("subject")
     governed_subject = subject.get("system") if isinstance(subject, dict) else None
 
+    # AC-020 B2: duplicate required_facts declarations for the same fact_id
+    # refuse — no composition rule is established for this specimen.
+    seen_declared_fact_ids: set[str] = set()
+
     admitted_records: list[dict[str, Any]] = []
     for declared in required_facts:
         fact_id = declared.get("fact_id") if isinstance(declared, dict) else None
+
+        if fact_id in seen_declared_fact_ids:
+            return RunResult(
+                decision="REFUSED",
+                reason_code=MalformedInput.code,
+                message=(
+                    f"{MalformedInput.code}: contract.required_facts declares "
+                    f"duplicate fact_id {fact_id!r}"
+                ),
+                receipt=None,
+            )
+        seen_declared_fact_ids.add(fact_id)
+
         entry = fact_entries.get(fact_id)
         if entry is None:
             return RunResult(
@@ -333,10 +428,16 @@ def run_specimen(
         except FactInadmissible as exc:
             return RunResult(decision="REFUSED", reason_code=exc.code, message=str(exc), receipt=None)
 
+        # AC-020 C2: bind the VERIFIED asserting identity and VERIFIED
+        # assertion time too, not just value/issuer/trust/path/corroborator
+        # — a decision-relevant temporal/assertion mutation must now change
+        # this digest.
         admitted_records.append({
             "fact_id": fact_contract.fact_id,
             "value_type": fact_contract.value_type,
             "value": _normalize_for_digest(admitted_value),
+            "asserted_by": evidence.asserted_by,
+            "asserted_at": evidence.asserted_at.isoformat(),
             "evidence": {
                 "issuer": evidence.issuer,
                 "trust_basis": evidence.trust_basis,
@@ -362,6 +463,12 @@ def run_specimen(
             name: _normalize_for_digest(value) for name, value in validated_params.items()
         },
     })
+    # AC-020 C3: bind the exact admission sibling context separately from
+    # contract_digest — evidence continuity only, never a claim that
+    # admission constitutes valid institutional authority. Missing/
+    # malformed `admission` digests as the canonical empty object.
+    admission = artifact.get("admission")
+    admission_digest = _digest_payload(admission if isinstance(admission, dict) else {})
 
     payload = {
         "contract_digest": proj.contract_digest,
@@ -369,8 +476,11 @@ def run_specimen(
         "projection_digest": _projection_digest_of(proj),
         "runtime_fact_set_digest": runtime_fact_set_digest,
         "exact_action_digest": exact_action_digest,
+        "admission_digest": admission_digest,
         "decision": "ALLOW",
         "execution_result": execution_result,
+        # AC-020 C1: bind the exact decision/evaluation time freshness used.
+        "decision_time": now.isoformat(),
     }
     receipt = dict(payload)
     receipt["receipt_digest"] = _digest_payload(payload)

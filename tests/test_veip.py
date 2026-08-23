@@ -1,13 +1,16 @@
-"""AC-019 / C-08 — minimal VEIP-bound runtime decision + AEP-style receipt.
+"""AC-019 / C-08, amended by AC-020 — minimal VEIP-bound runtime decision +
+AEP-style receipt with verified assertion binding and AEP evidence
+continuity.
 
 Unit-level tests against authcontract.veip directly. Composes the existing,
-unmodified digest/projection/facts gates — none of digest.py, facts.py, or
-projection.py is touched by this test file or by veip.py itself.
+unmodified digest/projection gates, and facts.py's AC-020-repaired fact
+gate — none of digest.py or projection.py is touched by this test file or
+by veip.py itself; facts.py IS amended (see test_facts.py for its own
+direct unit coverage of the A1-A7 repair) and veip.py is amended for the
+F2 AEP evidence-continuity repair (C1-C5).
 """
 
 import json
-from datetime import timedelta
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -26,16 +29,27 @@ from authcontract.veip import (
 )
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+RUNTIME = FIXTURES / "runtime"
 ARTIFACT = json.loads((FIXTURES / "banking_payment_specimen.json").read_text())
 SUSPENDED_ARTIFACT = json.loads((FIXTURES / "banking_payment_specimen_suspended.json").read_text())
+DUPLICATE_REQUIRED_FACT_ARTIFACT = json.loads(
+    (FIXTURES / "banking_payment_specimen_duplicate_required_fact.json").read_text()
+)
+BAD_CORROBORATION_REQUIRED_ARTIFACT = json.loads(
+    (FIXTURES / "banking_payment_specimen_bad_corroboration_required.json").read_text()
+)
 ACTION = json.loads((FIXTURES / "actions" / "send_payment_valid.json").read_text())
 UNKNOWN_ACTION = json.loads((FIXTURES / "actions" / "send_payment_unknown_action_type.json").read_text())
 DOMAIN_ESCAPE_ACTION = json.loads((FIXTURES / "actions" / "send_payment_unknown_parameter.json").read_text())
-FACTS_VALID = json.loads((FIXTURES / "runtime" / "facts_valid.json").read_text())
+FACTS_VALID = json.loads((RUNTIME / "facts_valid.json").read_text())
 
 
 def _run(artifact=ARTIFACT, action=ACTION, facts=FACTS_VALID, execution_result="SIMULATED_SUCCESS"):
     return run_specimen(artifact, action, facts, execution_result=execution_result)
+
+
+def _runtime_fixture(name):
+    return json.loads((RUNTIME / name).read_text())
 
 
 # --------------------------------------------------------------- positive
@@ -92,6 +106,43 @@ def test_invalid_execution_result_is_refused():
     assert result.receipt is None
 
 
+# ------------------------------------- AC-020 C1: decision_time binding
+
+def test_receipt_binds_decision_time_from_fact_bundle_now():
+    result = _run()
+    assert result.receipt["decision_time"] == FACTS_VALID["now"]
+
+
+# ------------------------------------- AC-020 C3: admission_digest binding
+
+def test_receipt_binds_admission_digest():
+    result = _run()
+    assert result.receipt["admission_digest"].startswith("sha256:")
+
+
+def test_admission_mutation_changes_admission_and_receipt_digest_but_not_contract_digest():
+    """AC-020 C4 corrects AC-019's `test_admission_only_mutation_does_not_
+    change_receipt_digests`, which asserted that mutating admission.approvals
+    left ALL receipt digests unchanged. That was consistent with R01
+    contract/admission partitioning (contract_digest correctly ignores
+    admission) but wrong for an AEP-style receipt meant to preserve exactly
+    which admission/approval context accompanied the decision — AC-020
+    Finding F2 established this as a real evidence-continuity gap. Corrected
+    behavior: contract_digest is unaffected (R01 partitioning unchanged),
+    but admission_digest and receipt_digest now DO change.
+    """
+    mutated_artifact = json.loads(json.dumps(ARTIFACT))
+    mutated_artifact["admission"]["approvals"] = [{"approval_id": "approval:xyz", "approver": "ops-lead"}]
+    r1 = _run()
+    r2 = _run(artifact=mutated_artifact)
+    assert r1.receipt["contract_digest"] == r2.receipt["contract_digest"]
+    assert r1.receipt["projection_digest"] == r2.receipt["projection_digest"]
+    assert r1.receipt["runtime_fact_set_digest"] == r2.receipt["runtime_fact_set_digest"]
+    assert r1.receipt["exact_action_digest"] == r2.receipt["exact_action_digest"]
+    assert r1.receipt["admission_digest"] != r2.receipt["admission_digest"]
+    assert r1.receipt["receipt_digest"] != r2.receipt["receipt_digest"]
+
+
 # ---------------------------------------------- B9 mandatory negative paths
 
 def test_required_fact_missing_refuses_no_receipt():
@@ -102,7 +153,11 @@ def test_required_fact_missing_refuses_no_receipt():
 
 
 def test_self_asserted_prohibited_refuses():
-    facts = json.loads((FIXTURES / "runtime" / "facts_self_asserted_prohibited.json").read_text())
+    """AC-020: fixture now carries VERIFIED asserted_by == the governed
+    subject too (not just the claim) — a genuinely verified self-assertion,
+    which is the correct way to exercise this path once evidence itself
+    binds asserting identity (A1/A3)."""
+    facts = _runtime_fixture("facts_self_asserted_prohibited.json")
     result = _run(facts=facts)
     assert result.decision == "REFUSED"
     assert result.reason_code == FactSelfAsserted.code
@@ -110,7 +165,10 @@ def test_self_asserted_prohibited_refuses():
 
 
 def test_stale_fact_refuses():
-    facts = json.loads((FIXTURES / "runtime" / "facts_stale.json").read_text())
+    """AC-020: fixture's evidence.asserted_at now agrees with the claim
+    (both stale) so the genuine staleness check fires, rather than the new
+    claim/verification agreement check."""
+    facts = _runtime_fixture("facts_stale.json")
     result = _run(facts=facts)
     assert result.decision == "REFUSED"
     assert result.reason_code == FactStale.code
@@ -118,7 +176,7 @@ def test_stale_fact_refuses():
 
 
 def test_lossy_representation_refuses():
-    facts = json.loads((FIXTURES / "runtime" / "facts_lossy_representation.json").read_text())
+    facts = _runtime_fixture("facts_lossy_representation.json")
     result = _run(facts=facts)
     assert result.decision == "REFUSED"
     assert result.reason_code == "RUN_FACT_REPRESENTATION"
@@ -126,7 +184,9 @@ def test_lossy_representation_refuses():
 
 
 def test_future_timestamp_refuses():
-    facts = json.loads((FIXTURES / "runtime" / "facts_future_timestamp.json").read_text())
+    """AC-020: fixture's evidence.asserted_at now agrees with the claim
+    (both future) so the genuine future-timestamp check fires."""
+    facts = _runtime_fixture("facts_future_timestamp.json")
     result = _run(facts=facts)
     assert result.decision == "REFUSED"
     assert result.reason_code == FactFutureTimestamp.code
@@ -134,7 +194,12 @@ def test_future_timestamp_refuses():
 
 
 def test_unverifiable_naive_timestamp_refuses():
-    facts = json.loads((FIXTURES / "runtime" / "facts_naive_timestamp.json").read_text())
+    """AC-020: fixture's fact and evidence asserted_at now agree (both
+    naive) so the claim/verification agreement check passes cleanly, and
+    the genuine naive/aware-vs-`now` unverifiable-comparison check in
+    facts.py's freshness gate fires instead — the same defect this test
+    originally targeted, still reachable under the repaired architecture."""
+    facts = _runtime_fixture("facts_naive_timestamp.json")
     result = _run(facts=facts)
     assert result.decision == "REFUSED"
     assert result.reason_code == "RUN_FACT_TIME_UNVERIFIABLE"
@@ -184,7 +249,167 @@ def test_malformed_fact_entry_missing_field():
     assert result.reason_code == MalformedInput.code
 
 
-# ------------------------------------------------------ B8 mutation matrix
+# ============================= AC-020 D1-D4: verified assertion binding
+# (facts.py-level unit coverage lives in test_facts.py; these exercise the
+# same defects through the full orchestration path against the real
+# banking specimen, matching the work order's D1-D4 hostile-case wording.)
+
+def test_d1_verified_asserter_is_governed_subject_but_caller_claims_treasury():
+    """D1: governed subject is verified asserter but caller claims
+    Treasury -> REFUSE."""
+    facts = _runtime_fixture("facts_verified_asserter_mismatch.json")
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == "RUN_FACT_EVIDENCE_MISMATCH"
+    assert result.receipt is None
+
+
+def test_d2_verified_value_false_claimed_value_true():
+    """D2: verified value false / caller value true -> REFUSE."""
+    facts = _runtime_fixture("facts_verified_value_mismatch.json")
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == "RUN_FACT_EVIDENCE_MISMATCH"
+    assert result.receipt is None
+
+
+def test_d3_verified_timestamp_stale_claimed_timestamp_fresh():
+    """D3: verified timestamp stale / caller timestamp fresh -> REFUSE."""
+    facts = _runtime_fixture("facts_verified_time_stale_claimed_fresh.json")
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == "RUN_FACT_EVIDENCE_MISMATCH"
+    assert result.receipt is None
+
+
+def test_d4_verified_fact_id_mismatch():
+    """D4: verified fact_id mismatch -> REFUSE."""
+    facts = _runtime_fixture("facts_verified_fact_id_mismatch.json")
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == "RUN_FACT_IDENTITY_MISMATCH"
+    assert result.receipt is None
+
+
+# ================================== AC-020 D5-D8: receipt evidence continuity
+
+def test_d5_verified_asserted_by_changes_receipt_unchanged_is_refused():
+    """D5: verified asserted_by changes while receipt unchanged ->
+    verify_receipt REFUSED."""
+    old = _run()
+    mutated_facts = json.loads(json.dumps(FACTS_VALID))
+    mutated_facts["facts"][0]["asserted_by"] = "TREASURY_APPROVAL_SERVICE_V2"
+    mutated_facts["facts"][0]["evidence"]["asserted_by"] = "TREASURY_APPROVAL_SERVICE_V2"
+    new = _run(facts=mutated_facts)
+    assert new.decision == "ALLOW"  # a genuinely reconstructible new receipt
+    assert new.receipt["runtime_fact_set_digest"] != old.receipt["runtime_fact_set_digest"]
+    verify = verify_receipt(old.receipt, ARTIFACT, ACTION, mutated_facts)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+def test_d6_verified_asserted_at_changes_within_freshness_window_receipt_unchanged_is_refused():
+    """D6: verified asserted_at changes within the nominal freshness window
+    while receipt unchanged -> verify_receipt REFUSED."""
+    old = _run()
+    mutated_facts = json.loads(json.dumps(FACTS_VALID))
+    new_time = "2026-08-23T00:06:00+00:00"  # still fresh, but different
+    mutated_facts["facts"][0]["asserted_at"] = new_time
+    mutated_facts["facts"][0]["evidence"]["asserted_at"] = new_time
+    new = _run(facts=mutated_facts)
+    assert new.decision == "ALLOW"
+    assert new.receipt["runtime_fact_set_digest"] != old.receipt["runtime_fact_set_digest"]
+    verify = verify_receipt(old.receipt, ARTIFACT, ACTION, mutated_facts)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+def test_d7_decision_time_changes_receipt_unchanged_is_refused():
+    """D7: decision/evaluation time changes while receipt unchanged ->
+    verify_receipt REFUSED."""
+    old = _run()
+    mutated_facts = json.loads(json.dumps(FACTS_VALID))
+    mutated_facts["now"] = "2026-08-23T00:11:00+00:00"  # still within freshness
+    new = _run(facts=mutated_facts)
+    assert new.decision == "ALLOW"
+    assert new.receipt["decision_time"] != old.receipt["decision_time"]
+    verify = verify_receipt(old.receipt, ARTIFACT, ACTION, mutated_facts)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+def test_d8_admission_mutation_receipt_unchanged_is_refused_contract_digest_stable():
+    """D8: admission.approvals or another admission field changes while
+    receipt unchanged -> verify_receipt REFUSED; contract_digest itself
+    remains unchanged."""
+    old = _run()
+    mutated_artifact = json.loads(json.dumps(ARTIFACT))
+    mutated_artifact["admission"]["approvals"] = [{"approval_id": "approval:xyz", "approver": "ops-lead"}]
+    new = _run(artifact=mutated_artifact)
+    assert new.decision == "ALLOW"
+    assert new.receipt["contract_digest"] == old.receipt["contract_digest"]
+    assert new.receipt["admission_digest"] != old.receipt["admission_digest"]
+    verify = verify_receipt(old.receipt, mutated_artifact, ACTION, FACTS_VALID)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+# ============================================== AC-020 D9-D12: fail-closed shape
+
+def test_d9_duplicate_runtime_fact_id_is_refused():
+    facts = _runtime_fixture("facts_duplicate_fact_id.json")
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+def test_d10_duplicate_required_facts_declaration_is_refused():
+    result = _run(artifact=DUPLICATE_REQUIRED_FACT_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+@pytest.mark.parametrize("bad_fixture", [
+    "facts_unknown_bundle_field.json",
+    "facts_unknown_fact_field.json",
+    "facts_unknown_evidence_field.json",
+])
+def test_d11_unknown_runtime_field_is_refused(bad_fixture):
+    facts = _runtime_fixture(bad_fixture)
+    result = _run(facts=facts, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+def test_d12_non_boolean_corroboration_required_string_is_refused():
+    result = _run(artifact=BAD_CORROBORATION_REQUIRED_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+def test_d12_non_boolean_corroboration_required_int_zero_is_refused():
+    """Same declaration defect, the other named truthy/falsy non-bool
+    value (0), constructed by mutating the loaded contract in place (with
+    contract_digest recomputed to match, so the digest gate itself doesn't
+    intercept this before the declaration is even evaluated) rather than
+    committing a second near-duplicate fixture file."""
+    artifact = json.loads(json.dumps(BAD_CORROBORATION_REQUIRED_ARTIFACT))
+    artifact["contract"]["required_facts"][0]["corroboration_required"] = 0
+    new_digest = contract_digest(artifact["contract"])
+    artifact["activation"]["contract_digest"] = new_digest
+    artifact["admission"]["contract_digest"] = new_digest
+    artifact["proof"]["contract_digest"] = new_digest
+    result = _run(artifact=artifact, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+# ======================================================= B8 mutation matrix
 
 def _mutated_receipt(**overrides):
     result = _run()
@@ -199,10 +424,14 @@ def _mutated_receipt(**overrides):
     ("projection_digest", "sha256:" + "1" * 64),
     ("runtime_fact_set_digest", "sha256:" + "2" * 64),
     ("exact_action_digest", "sha256:" + "3" * 64),
+    ("admission_digest", "sha256:" + "5" * 64),
     ("decision", "DENY"),
     ("execution_result", "NOT_EXECUTED"),  # valid label, but wrong for this receipt
+    ("decision_time", "2099-01-01T00:00:00+00:00"),
 ])
 def test_b8_single_field_mutation_is_detected(field, bad_value):
+    """D13: all previously valid AC-019 receipt field/value mutations
+    remain detected, extended with the two AC-020 fields."""
     receipt = _mutated_receipt(**{field: bad_value})
     verify = verify_receipt(receipt, ARTIFACT, ACTION, FACTS_VALID)
     assert verify.status == "REFUSED"
@@ -220,7 +449,7 @@ def test_b8_admitted_fact_value_changed_receipt_unchanged():
     result = _run()
     mutated_facts = json.loads(json.dumps(FACTS_VALID))
     mutated_facts["facts"][0]["raw_value"] = False
-    mutated_facts["facts"][0]["evidence"] = mutated_facts["facts"][0]["evidence"]
+    mutated_facts["facts"][0]["evidence"]["value"] = False
     verify = verify_receipt(result.receipt, ARTIFACT, ACTION, mutated_facts)
     assert verify.status == "REFUSED"
 
@@ -256,6 +485,8 @@ def test_b8_unknown_receipt_field_is_refused_not_dropped():
 
 
 def test_b8_repeated_reconstruction_is_byte_identical():
+    """D14: identical complete inputs reconstruct byte-identical/JCS-
+    deterministic receipt."""
     r1 = _run().receipt
     r2 = _run().receipt
     assert r1 == r2
@@ -275,15 +506,15 @@ def test_decimal_normalized_to_string_in_exact_action_digest_inputs():
     assert other.receipt["exact_action_digest"] != result.receipt["exact_action_digest"]
 
 
-def test_admission_only_mutation_does_not_change_receipt_digests():
-    """Mirrors AC-016's own admission/proof-only-mutation invariant: since
-    veip.py never reads admission/proof, an admission-only-changed artifact
-    must still produce byte-identical receipt digests."""
-    mutated_artifact = json.loads(json.dumps(ARTIFACT))
-    mutated_artifact["admission"]["approvals"] = [{"approval_id": "approval:xyz", "approver": "ops-lead"}]
-    r1 = _run()
-    r2 = _run(artifact=mutated_artifact)
-    assert r1.receipt["contract_digest"] == r2.receipt["contract_digest"]
-    assert r1.receipt["projection_digest"] == r2.receipt["projection_digest"]
-    assert r1.receipt["runtime_fact_set_digest"] == r2.receipt["runtime_fact_set_digest"]
-    assert r1.receipt["exact_action_digest"] == r2.receipt["exact_action_digest"]
+# ---------------------------------------------------------- D15 (positive)
+
+def test_d15_positive_specimen_reaches_allow_only_after_all_gates_pass():
+    """D15: the current positive synthetic banking specimen still reaches
+    ALLOW only after all fact/action/artifact gates pass — spot-checked by
+    confirming every one of the upstream negative paths above independently
+    refuses (already exhaustively covered), and that the single genuinely
+    positive combination allows with a fully-bound receipt."""
+    result = _run()
+    assert result.decision == "ALLOW"
+    for key in RECEIPT_REQUIRED_KEYS:
+        assert key in result.receipt

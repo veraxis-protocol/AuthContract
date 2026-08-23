@@ -1,7 +1,9 @@
 """`authcontract verify|project|check-action|git-gate|run-specimen|
 verify-receipt` — CLI over the digest (R01/AC-I06), projection/action-
 closure (AC-016), Git merge-result admissibility (AC-018/C-07/D-006), and
-minimal VEIP-bound runtime decision + AEP-style receipt (AC-019/C-08) gates.
+minimal VEIP-bound runtime decision + AEP-style receipt (AC-019/C-08,
+amended by AC-020's verified assertion binding + AEP evidence continuity)
+gates.
 
 MVP-alpha scope only. Does not implement production provenance
 verification, real payment execution, or general VEIP/AEP correctness.

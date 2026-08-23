@@ -21,6 +21,27 @@
         "assertion_path": "ATTESTED_CHANNEL",
         "corroborated_by": null
       }
+    },
+    {
+      "fact_id": "secondary_approval.present",
+      "raw_value": false,
+      "wire_representation": "json_boolean",
+      "asserted_by": "TREASURY_APPROVAL_SERVICE",
+      "asserted_at": "2026-08-23T00:05:00+00:00",
+      "claimed_issuer": "TREASURY_APPROVAL_SERVICE",
+      "claimed_trust_basis": "signed_approval_record",
+      "claimed_assertion_path": "ATTESTED_CHANNEL",
+      "claimed_corroborated_by": null,
+      "evidence": {
+        "fact_id": "secondary_approval.present",
+        "value": false,
+        "asserted_by": "TREASURY_APPROVAL_SERVICE",
+        "asserted_at": "2026-08-23T00:05:00+00:00",
+        "issuer": "TREASURY_APPROVAL_SERVICE",
+        "trust_basis": "signed_approval_record",
+        "assertion_path": "ATTESTED_CHANNEL",
+        "corroborated_by": null
+      }
     }
   ]
 }

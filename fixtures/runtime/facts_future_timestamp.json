@@ -12,6 +12,10 @@
       "claimed_assertion_path": "ATTESTED_CHANNEL",
       "claimed_corroborated_by": null,
       "evidence": {
+        "fact_id": "secondary_approval.present",
+        "value": true,
+        "asserted_by": "TREASURY_APPROVAL_SERVICE",
+        "asserted_at": "2026-08-23T00:15:00+00:00",
         "issuer": "TREASURY_APPROVAL_SERVICE",
         "trust_basis": "signed_approval_record",
         "assertion_path": "ATTESTED_CHANNEL",

@@ -6,7 +6,7 @@
       "raw_value": true,
       "wire_representation": "json_boolean",
       "asserted_by": "TREASURY_APPROVAL_SERVICE",
-      "asserted_at": "2026-08-22T23:00:00+00:00",
+      "asserted_at": "2026-08-23T00:08:00+00:00",
       "claimed_issuer": "TREASURY_APPROVAL_SERVICE",
       "claimed_trust_basis": "signed_approval_record",
       "claimed_assertion_path": "ATTESTED_CHANNEL",

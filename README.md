@@ -9,7 +9,7 @@ v0.2.1 normative baseline that are testable without a running policy engine.
 | `authcontract/facts.py` | **R10** runtime fact contract | AC-I15 |
 | `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 / AC-017 |
 | `authcontract/git_gate.py` | Git merge-result admissibility | AC-018 / C-07 / D-006 |
-| `authcontract/veip.py` | minimal VEIP-bound runtime decision + AEP-style receipt | AC-019 / C-08 |
+| `authcontract/veip.py` | minimal VEIP-bound runtime decision + AEP-style receipt | AC-019 / C-08, amended AC-020 |
 
 ## Why the partition
 
@@ -24,6 +24,18 @@ A control requiring `secondary_approval.present == true` is decorative if the
 governed agent may assert that fact. `facts.py` runs admissibility **before**
 policy evaluation: issuer, trust basis, freshness, assertion path,
 self-assertion policy, corroboration, and wire representation.
+
+AC-012 first bound issuer/trust-basis/path/corroborator to `VerifiedEvidence`
+rather than the caller's own claimed text. AC-020 closed the remaining gap:
+`admit()` was still using the caller-claimed `AssertedFact.raw_value`,
+`asserted_at`, `asserted_by`, and `fact_id` as the *operative* semantics for
+value/freshness/self-assertion/identity decisions, even though nothing
+verified those specific claims. `VerifiedEvidence` now also binds fact
+identity, the verified operative value, the verified asserting identity, and
+the verified assertion timestamp; `admit()` requires the caller's claim to
+agree with this verified context (`RUN_FACT_EVIDENCE_MISMATCH` on any
+disagreement) and makes every identity/freshness/self-assertion/value
+decision against the VERIFIED fields, never the claimed ones.
 
 ## On R02
 
@@ -210,49 +222,89 @@ authcontract run-specimen fixtures/banking_payment_specimen.json \
   --execution-result SIMULATED_SUCCESS
 ```
 
-AC-019 / C-08: a minimal deterministic runtime orchestration path that
-*composes* the existing digest (`digest.py`), projection/action-closure
-(`projection.py`), and fact-admissibility (`facts.py`) gates — it does not
-reimplement or modify any of them. `<facts-json>` is a committed JSON file
-`{"now": "<ISO-8601 timestamp>", "facts": [{"fact_id", "raw_value",
-"wire_representation", "asserted_by", "asserted_at", "claimed_issuer",
-"claimed_trust_basis", "claimed_assertion_path", "claimed_corroborated_by",
-"evidence": {"issuer", "trust_basis", "assertion_path",
-"corroborated_by"}}, ...]}`, matching `<artifact>`/`<action-json>`'s own
-file-path convention. `--execution-result` must be one of `NOT_EXECUTED`,
-`SIMULATED_SUCCESS`, `SIMULATED_FAILURE` — this CLI never triggers, and the
-receipt never claims, a real payment/bank side effect.
+AC-019 / C-08, amended by AC-020: a minimal deterministic runtime
+orchestration path that *composes* the existing digest (`digest.py`),
+projection/action-closure (`projection.py`), and fact-admissibility
+(`facts.py`, itself amended by AC-020 — see "Why the fact gate" above)
+gates — it does not reimplement or modify any of them. `<facts-json>` is a
+committed JSON file:
+
+```json
+{
+  "now": "<ISO-8601 timestamp>",
+  "facts": [
+    {
+      "fact_id": "...", "raw_value": "...", "wire_representation": "...",
+      "asserted_by": "...", "asserted_at": "<ISO-8601 timestamp>",
+      "claimed_issuer": "...", "claimed_trust_basis": "...",
+      "claimed_assertion_path": "...", "claimed_corroborated_by": null,
+      "evidence": {
+        "fact_id": "...", "value": "...", "asserted_by": "...",
+        "asserted_at": "<ISO-8601 timestamp>", "issuer": "...",
+        "trust_basis": "...", "assertion_path": "...", "corroborated_by": null
+      }
+    }
+  ]
+}
+```
+
+The top-level object, each fact entry, and each `evidence` sub-object each
+have an exact allowed-key set (AC-020 B3) — an unrecognised field at any of
+these three levels refuses rather than being silently dropped. A duplicate
+runtime `fact_id` in `facts[]`, or a duplicate `fact_id` in the contract's
+own `required_facts` declarations, refuses rather than silently overwriting
+or being evaluated twice (AC-020 B1/B2). `evidence` is the VERIFIED
+assertion context (AC-020 A1) — `fact_id`/`value`/`asserted_by`/
+`asserted_at` here must be independently established by a trusted verifier,
+never derived from the fact entry's own claimed fields, and `admit()`
+requires the claim and the verified context to agree. `--execution-result`
+must be one of `NOT_EXECUTED`, `SIMULATED_SUCCESS`, `SIMULATED_FAILURE` —
+this CLI never triggers, and the receipt never claims, a real payment/bank
+side effect.
 
 `ALLOW` is returned only if the exact artifact verifies, the projection was
 ACTIVE and the action in-domain, every contract-declared required fact was
-admitted through `facts.admit()`, and no upstream gate refused. Any upstream
-refusal or error is surfaced as `REFUSED` with that gate's own `reason_code`
-— never converted to a best-effort `ALLOW`:
+admitted through `facts.admit()` (which itself now requires the claimed and
+verified assertion context to agree — AC-020 A2), and no upstream gate
+refused. Any upstream refusal or error is surfaced as `REFUSED` with that
+gate's own `reason_code` — never converted to a best-effort `ALLOW`:
 
 | Condition | reason_code |
 |---|---|
 | `--execution-result` not one of the three allowed labels (rejected by argparse before this ever reaches `run_specimen`) | n/a (`SystemExit`, argparse) |
 | execution_result not one of the three allowed labels (library call) | `VEIP_INVALID_EXECUTION_RESULT` |
-| facts file is not a JSON object, missing `now`, or a fact entry is missing a required field | `VEIP_MALFORMED_INPUT` |
+| facts bundle/fact-entry/evidence is not shaped as expected, carries an unrecognised field, or declares a duplicate runtime/contract `fact_id` | `VEIP_MALFORMED_INPUT` |
+| a contract `required_facts` declaration's `corroboration_required` is present but not an actual boolean (no truthiness coercion — a string `"false"` or `0` refuses) | `VEIP_MALFORMED_INPUT` |
 | artifact/action fail digest or projection verification | the propagated `digest.py`/`projection.py` code (`AC_DIGEST`, `AC_DIGEST_SCOPE`, `RUN_INACTIVE_CONTRACT`, `RUN_UNCLASSIFIED_ACTION`, `RUN_DOMAIN_ESCAPE`, ...) |
 | a contract-declared required fact has no matching entry in the facts file | `VEIP_FACT_BUNDLE_INCOMPLETE` |
-| a declared required fact fails `facts.admit()` (self-asserted where prohibited, stale, lossy representation, future/unverifiable timestamp, issuer/trust-basis mismatch, missing corroboration, ...) | the propagated `facts.py` code (`RUN_FACT_SELF_ASSERTED`, `RUN_FACT_STALE`, `RUN_FACT_REPRESENTATION`, `RUN_FACT_FUTURE_TIMESTAMP`, `RUN_FACT_TIME_UNVERIFIABLE`, ...) |
+| the verified evidence is bound to a different `fact_id` than the contract governs, or the claimed `fact_id` disagrees with the contract | `RUN_FACT_IDENTITY_MISMATCH` |
+| the claimed value/asserted_by/asserted_at disagrees with the VERIFIED value/asserted_by/asserted_at (AC-020 A2 — a caller cannot substitute a false value, time, or asserting identity while presenting an otherwise matching verifier context) | `RUN_FACT_EVIDENCE_MISMATCH` |
+| a declared required fact fails `facts.admit()` on the VERIFIED context (self-asserted where prohibited, stale, lossy representation, future/unverifiable timestamp, issuer/trust-basis mismatch, missing corroboration, ...) | the propagated `facts.py` code (`RUN_FACT_SELF_ASSERTED`, `RUN_FACT_STALE`, `RUN_FACT_REPRESENTATION`, `RUN_FACT_FUTURE_TIMESTAMP`, `RUN_FACT_TIME_UNVERIFIABLE`, ...) |
 | projection has no `activation_id` | `VEIP_MISSING_ACTIVATION_ID` |
 
 On `ALLOW`, prints a deterministic JSON object binding `contract_digest`,
 `activation_id`, `projection_digest`, `runtime_fact_set_digest` (the
 *admitted* fact set actually used by the decision — normalized typed
-values plus only the verifier-established evidence fields, never raw
-caller assertions or volatile data), `exact_action_digest` (the exact
-normalized action that passed `check_action`), `decision`, and
-`execution_result`, plus a `receipt_digest` computed over those other seven
-fields (never over itself — the same self-reference avoidance `digest.py`
-enforces for R01). All digests use the repository's uniform RFC 8785 JCS +
-SHA-256 discipline. Exits `0` only on `ALLOW`; every refusal exits non-zero
-and prints no receipt.
+values plus the VERIFIED asserting identity, VERIFIED assertion time, and
+verifier-established evidence fields, AC-020 C2 — never raw caller
+assertions or volatile data), `exact_action_digest` (the exact normalized
+action that passed `check_action`), `admission_digest` (a digest over the
+artifact's exact `admission` sibling object — evidence continuity only,
+AC-020 C3; it does not mean admission constitutes valid institutional
+authority, and `contract_digest` remains scoped to `contract` only, R01
+unchanged), `decision`, `execution_result`, and `decision_time` (the exact
+evaluation time used by the freshness gate, AC-020 C1), plus a
+`receipt_digest` computed over those other nine fields (never over itself —
+the same self-reference avoidance `digest.py` enforces for R01). All
+digests use the repository's uniform RFC 8785 JCS + SHA-256 discipline.
+Exits `0` only on `ALLOW`; every refusal exits non-zero and prints no
+receipt.
 
 `fixtures/runtime/` holds the committed facts specimen matrix exercising
-each negative path above against `fixtures/banking_payment_specimen.json`.
+each negative path above against `fixtures/banking_payment_specimen.json`;
+`fixtures/banking_payment_specimen_duplicate_required_fact.json` and
+`fixtures/banking_payment_specimen_bad_corroboration_required.json` cover
+the two contract-declaration-level fail-closed cases.
 
 ## Independently verify an AEP-style receipt
 
@@ -266,31 +318,42 @@ authcontract verify-receipt fixtures/runtime/receipt_valid.json \
 Recomputes the receipt from the raw source artifact, action, and facts
 (via the same code path as `run-specimen`) and compares every field against
 the supplied receipt — it never trusts a digest string merely because it is
-present in the receipt.
+present in the receipt. This now includes `decision_time` and
+`admission_digest` (AC-020 C5): a decision-relevant temporal, assertion, or
+admission mutation that leaves the receipt unchanged is detected here, not
+silently accepted.
 
 | Condition | reason_code |
 |---|---|
 | receipt is missing a required field, or carries a field outside the exact required set (fails closed — an unrecognised field is refused, never silently dropped) | `VEIP_RECEIPT_MALFORMED` |
 | the artifact/action/facts cannot independently reconstruct an `ALLOW` receipt at all (e.g. a fact was changed so admission now fails) | the propagated reason_code from the reconstruction attempt |
-| any one of `contract_digest`, `activation_id`, `projection_digest`, `runtime_fact_set_digest`, `exact_action_digest`, `decision`, `execution_result`, or `receipt_digest` does not match the independently reconstructed value | `VEIP_RECEIPT_MISMATCH` |
+| any one of `contract_digest`, `activation_id`, `projection_digest`, `runtime_fact_set_digest`, `exact_action_digest`, `admission_digest`, `decision`, `execution_result`, `decision_time`, or `receipt_digest` does not match the independently reconstructed value | `VEIP_RECEIPT_MISMATCH` |
 
 Exits `0` only on `PASS`; every refusal exits non-zero. `tests/test_veip.py`
 and `tests/test_cli_veip.py` carry the full B8 mutation matrix (each of the
-eight bound fields, plus `receipt_digest`, independently detected when
-tampered) and B9 negative-runtime-path matrix (required fact missing,
-self-asserted where prohibited, stale, lossy representation, future/naive
-timestamp, inactive projection, unknown action, action domain escape — each
-refuses before any receipt is issued).
+nine bound fields, plus `receipt_digest`, independently detected when
+tampered — extended by AC-020's `admission_digest`/`decision_time`) and the
+B9/D1-D15 negative-runtime-path and hostile-substitution matrix (required
+fact missing, self-asserted where prohibited, stale, lossy representation,
+future/naive timestamp, inactive projection, unknown action, action domain
+escape, claimed/verified value or asserter or timestamp or fact_id
+mismatch, verified-context mutation with an old receipt, duplicate
+fact_id/declaration, unknown runtime field, non-boolean
+`corroboration_required` — each refuses before any receipt is issued or is
+independently detected against a stale receipt).
 
-**Claim ceiling:** this is a TESTED bounded MVP-alpha runtime decision and
-AEP-style reconstruction for one synthetic banking specimen, using the
-repository's current digest, fact-admissibility, and
-projection/action-closure components. It does not claim production
+**Claim ceiling:** this is a TESTED bounded MVP-alpha assertion-bound fact
+admissibility and AEP-style evidence reconstruction for one synthetic
+banking specimen, using the repository's current digest,
+fact-admissibility, and projection/action-closure components. The trusted
+verifier context is internally bound to the assertion it vouches for; the
+receipt binds exact contract/activation/projection/admission/fact/action/
+decision-time/execution-result context. It does not claim production
 readiness, real payment execution, real institutional authorization,
 cryptographic provenance verification, general VEIP correctness, universal
-policy correctness, legal correctness, or external adoption. `execution_result`
-is always a synthetic, receipt-bound label — never a real bank/payment side
-effect.
+policy correctness, legal correctness, or external adoption.
+`execution_result` is always a synthetic, receipt-bound label — never a
+real bank/payment side effect.
 
 ## Test
 
