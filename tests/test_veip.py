@@ -1,13 +1,16 @@
-"""AC-019 / C-08, amended by AC-020 — minimal VEIP-bound runtime decision +
-AEP-style receipt with verified assertion binding and AEP evidence
-continuity.
+"""AC-019 / C-08, amended by AC-020 and AC-020A — minimal VEIP-bound
+runtime decision + AEP-style receipt with verified assertion binding, AEP
+evidence continuity, closed required-fact declaration shape, and
+presence-aware exact admission binding.
 
 Unit-level tests against authcontract.veip directly. Composes the existing,
 unmodified digest/projection gates, and facts.py's AC-020-repaired fact
-gate — none of digest.py or projection.py is touched by this test file or
-by veip.py itself; facts.py IS amended (see test_facts.py for its own
-direct unit coverage of the A1-A7 repair) and veip.py is amended for the
-F2 AEP evidence-continuity repair (C1-C5).
+gate — none of digest.py, projection.py, or facts.py is touched by this
+test file or by veip.py's AC-020A amendment (see test_facts.py for direct
+unit coverage of the AC-020 A1-A7 repair); veip.py itself is amended for
+AC-020's F2 AEP evidence-continuity repair (C1-C5) and AC-020A's R1
+(required-fact declaration shape closure) and R2 (presence-aware exact
+admission binding) residual closures.
 """
 
 import json
@@ -37,6 +40,18 @@ DUPLICATE_REQUIRED_FACT_ARTIFACT = json.loads(
 )
 BAD_CORROBORATION_REQUIRED_ARTIFACT = json.loads(
     (FIXTURES / "banking_payment_specimen_bad_corroboration_required.json").read_text()
+)
+UNKNOWN_REQUIRED_FACT_FIELD_ARTIFACT = json.loads(
+    (FIXTURES / "banking_payment_specimen_unknown_required_fact_field.json").read_text()
+)
+ADMISSION_LIST_ARTIFACT = json.loads((FIXTURES / "banking_payment_specimen_admission_list.json").read_text())
+ADMISSION_NULL_ARTIFACT = json.loads((FIXTURES / "banking_payment_specimen_admission_null.json").read_text())
+ADMISSION_PRESENT_EMPTY_ARTIFACT = json.loads(
+    (FIXTURES / "banking_payment_specimen_admission_present_empty.json").read_text()
+)
+ADMISSION_ABSENT_ARTIFACT = json.loads((FIXTURES / "banking_payment_specimen_admission_absent.json").read_text())
+ADMISSION_ALT_VALID_ARTIFACT = json.loads(
+    (FIXTURES / "banking_payment_specimen_admission_alt_valid.json").read_text()
 )
 ACTION = json.loads((FIXTURES / "actions" / "send_payment_valid.json").read_text())
 UNKNOWN_ACTION = json.loads((FIXTURES / "actions" / "send_payment_unknown_action_type.json").read_text())
@@ -518,3 +533,170 @@ def test_d15_positive_specimen_reaches_allow_only_after_all_gates_pass():
     assert result.decision == "ALLOW"
     for key in RECEIPT_REQUIRED_KEYS:
         assert key in result.receipt
+
+
+# ======================================================================
+# AC-020A — R1: required_facts declaration shape closure
+# ======================================================================
+
+def test_a1_unknown_required_facts_declaration_field_is_refused():
+    """A1: unknown required_facts declaration field -> REFUSED /
+    VEIP_MALFORMED_INPUT."""
+    result = _run(artifact=UNKNOWN_REQUIRED_FACT_FIELD_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+def test_a2_known_required_facts_declaration_remains_accepted():
+    """A2: known required_facts declaration remains accepted where
+    otherwise valid — the ordinary positive path is untouched by R1."""
+    result = _run()
+    assert result.decision == "ALLOW"
+
+
+def test_a3_corroboration_required_string_still_refused():
+    """A3: corroboration_required string/int still REFUSED (AC-020 B4,
+    unweakened by R1's added key-set check)."""
+    result = _run(artifact=BAD_CORROBORATION_REQUIRED_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+
+
+def test_a4_duplicate_required_facts_still_refused():
+    """A4: duplicate required_facts still REFUSED (AC-020 B2, unweakened
+    by R1)."""
+    result = _run(artifact=DUPLICATE_REQUIRED_FACT_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+
+
+# ======================================================================
+# AC-020A — R2: presence-aware exact admission binding
+# ======================================================================
+
+@pytest.mark.parametrize("bad_artifact", [
+    ADMISSION_LIST_ARTIFACT,
+    ADMISSION_NULL_ARTIFACT,
+])
+def test_a5_non_object_admission_sibling_is_refused_not_crashed(bad_artifact):
+    """A5: non-object admission sibling -> controlled REFUSED /
+    VEIP_MALFORMED_INPUT, no uncaught exception. Covers both a present
+    list and an explicit JSON null (which digest.py itself would silently
+    treat the same as absence — this orchestration does not)."""
+    result = _run(artifact=bad_artifact, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+@pytest.mark.parametrize("bad_value", [
+    "a string",
+    42,
+    True,
+])
+def test_a5_non_object_admission_sibling_inline_variants(bad_value):
+    """A5, additional shapes (string/number/boolean) constructed inline
+    rather than as separate committed fixtures."""
+    artifact = json.loads(json.dumps(ARTIFACT))
+    artifact["admission"] = bad_value
+    result = _run(artifact=artifact, execution_result="NOT_EXECUTED")
+    assert result.decision == "REFUSED"
+    assert result.reason_code == MalformedInput.code
+    assert result.receipt is None
+
+
+def test_a6_present_empty_admission_never_silently_accepted_as_absent():
+    """A6: absent admission and present-empty admission must never
+    silently collapse to the same accepted evidence state. Present-empty
+    ({}) is refused here by the PRE-EXISTING R01 sibling-binding
+    requirement (digest.py: a present sibling must bind contract_digest;
+    {} has none) — the acceptance matrix's explicitly permitted
+    alternative to producing a merely-distinct digest. Absent admission
+    remains a genuinely different, accepted state."""
+    empty_result = _run(artifact=ADMISSION_PRESENT_EMPTY_ARTIFACT, execution_result="NOT_EXECUTED")
+    assert empty_result.decision == "REFUSED"
+    assert empty_result.receipt is None
+
+    absent_result = _run(artifact=ADMISSION_ABSENT_ARTIFACT, execution_result="SIMULATED_SUCCESS")
+    assert absent_result.decision == "ALLOW"
+    assert absent_result.receipt is not None
+
+
+def test_a6_absent_admission_digest_is_presence_aware():
+    """Absent admission binds a distinct `{"present": false}`-derived
+    digest, never silently normalized to the same payload a present
+    (even empty) admission would use."""
+    result = _run(artifact=ADMISSION_ABSENT_ARTIFACT, execution_result="SIMULATED_SUCCESS")
+    assert result.decision == "ALLOW"
+    assert result.receipt["admission_digest"].startswith("sha256:")
+
+
+def test_a7_two_distinct_valid_admission_objects_differ_in_admission_digest_only():
+    """A7: admission content mutation changes admission_digest +
+    receipt_digest, not contract_digest — demonstrated here with two
+    independently valid, differently-shaped admission objects (not just a
+    before/after mutation of the same one)."""
+    r1 = _run(artifact=ARTIFACT)
+    r2 = _run(artifact=ADMISSION_ALT_VALID_ARTIFACT)
+    assert r1.decision == "ALLOW"
+    assert r2.decision == "ALLOW"
+    assert r1.receipt["contract_digest"] == r2.receipt["contract_digest"]
+    assert r1.receipt["projection_digest"] == r2.receipt["projection_digest"]
+    assert r1.receipt["runtime_fact_set_digest"] == r2.receipt["runtime_fact_set_digest"]
+    assert r1.receipt["admission_digest"] != r2.receipt["admission_digest"]
+    assert r1.receipt["receipt_digest"] != r2.receipt["receipt_digest"]
+
+
+def test_a8_old_receipt_against_absent_admission_is_refused():
+    """A8: old receipt against a changed accepted admission context ->
+    verify_receipt REFUSED. Covers switching from a present admission (the
+    golden receipt's origin) to an absent one — a different accepted
+    admission context, not just a content mutation of the same shape
+    (D8 in test suite above already covers the content-mutation case)."""
+    old = _run(artifact=ARTIFACT)
+    assert old.decision == "ALLOW"
+    verify = verify_receipt(old.receipt, ADMISSION_ABSENT_ARTIFACT, ACTION, FACTS_VALID)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+def test_a8_old_receipt_against_alternate_valid_admission_is_refused():
+    """A8, the other direction: old receipt against a different but
+    equally valid admission object -> verify_receipt REFUSED."""
+    old = _run(artifact=ARTIFACT)
+    verify = verify_receipt(old.receipt, ADMISSION_ALT_VALID_ARTIFACT, ACTION, FACTS_VALID)
+    assert verify.status == "REFUSED"
+    assert verify.reason_code == ReceiptMismatch.code
+
+
+def test_a9_all_ac020_hostile_cases_remain_green():
+    """A9: sentinel test — the full AC-020 D1-D15 matrix is exercised by
+    the tests above this section, unmodified from AC-020 and still
+    passing under AC-020A (see D1-D15 test functions throughout this
+    file); this test only re-confirms the positive baseline they all
+    depend on still allows."""
+    assert _run().decision == "ALLOW"
+
+
+def test_a10_positive_specimen_allows_only_after_all_gates_pass():
+    """A10: identical intent to D15, restated as its own named AC-020A
+    acceptance-matrix item."""
+    result = _run()
+    assert result.decision == "ALLOW"
+    for key in RECEIPT_REQUIRED_KEYS:
+        assert key in result.receipt
+
+
+def test_a11_readme_matches_da647ac_exactly():
+    """A11: README.md equals the da647ac README exactly in the AC-020A
+    candidate — AC-020's developer-documentation rewrite is reverted;
+    AC-021 is the sole authorized documentation rewrite."""
+    import subprocess
+
+    readme_path = FIXTURES.parent / "README.md"
+    da647ac_readme = subprocess.run(
+        ["git", "show", "da647ac11222af149d9cbf36d511f6dc0ce50e96:README.md"],
+        cwd=FIXTURES.parent, capture_output=True, text=True, check=True,
+    ).stdout
+    assert readme_path.read_text() == da647ac_readme

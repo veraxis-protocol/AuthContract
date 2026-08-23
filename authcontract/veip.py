@@ -56,6 +56,23 @@ mutate any of them without changing the receipt. This amendment:
     unrecognised bundle/fact/evidence field, and a non-boolean
     `corroboration_required` declaration all refuse rather than being
     silently accepted.
+
+AC-020A amendment (R1/R2 residual closure): AC-020 B4 closed
+`corroboration_required` truthiness coercion but never compared a
+`required_facts[]` declaration's full key set against an allowed list —
+an unknown declaration field was silently accepted/ignored (R1, closed via
+`_REQUIRED_FACT_DECLARATION_ALLOWED_KEYS`). AC-020 C3's `admission_digest`
+also normalized both absence and any non-dict `admission` value to the
+same `{}` payload, and a present non-dict value would have reached
+digest.py's sibling-binding loop, which assumes present siblings are
+mapping-like and raises an uncontrolled `AttributeError` on one that is
+not. R2 validates admission shape in this orchestration layer BEFORE
+`project()` is ever called: a present non-dict (or explicit JSON `null`)
+admission refuses deterministically as `VEIP_MALFORMED_INPUT`; a genuinely
+absent admission and a present-but-empty admission (`{}`) now bind
+distinct `admission_digest` values via an explicit `present` flag in the
+digest payload, so they can never silently collapse to the same accepted
+evidence state.
 """
 
 from __future__ import annotations
@@ -207,10 +224,30 @@ _EVIDENCE_ALLOWED_KEYS = frozenset({
     "fact_id", "value", "asserted_by", "asserted_at",
     "issuer", "trust_basis", "assertion_path", "corroborated_by",
 })
+#: AC-020A R1: the bounded `contract.required_facts[]` declaration schema —
+#: only the fields this specimen's orchestration actually reads. AC-020 B4
+#: closed corroboration_required's truthiness coercion but never compared
+#: the full declared key set against an allowed list, so an arbitrary
+#: unknown declaration field was silently accepted/ignored and could still
+#: reach ALLOW. Closed here the same way the runtime bundle/fact/evidence
+#: shapes already are.
+_REQUIRED_FACT_DECLARATION_ALLOWED_KEYS = frozenset({
+    "fact_id", "value_type", "issuer", "trust_basis", "freshness_seconds",
+    "assertion_path", "self_assertion_policy", "wire_representation",
+    "corroboration_required",
+})
 
 
 def _build_fact_contract(declared: dict[str, Any]) -> FactContract:
     from datetime import timedelta
+
+    unknown_declared = set(declared) - _REQUIRED_FACT_DECLARATION_ALLOWED_KEYS
+    if unknown_declared:
+        # AC-020A R1: fail closed rather than silently accept/ignore.
+        raise ValueError(
+            "required_facts declaration has unsupported field(s): "
+            f"{sorted(unknown_declared)}"
+        )
 
     if "corroboration_required" in declared:
         corroboration_required = declared["corroboration_required"]
@@ -349,6 +386,30 @@ def run_specimen(
             receipt=None,
         )
 
+    # AC-020A R2: validate the bounded admission shape BEFORE project() ever
+    # calls digest.verify_artifact() — that path assumes a present sibling
+    # is mapping-like (`obj.get("contract_digest")`) and raises an
+    # uncontrolled AttributeError on a non-dict sibling value. A present
+    # list/string/number/bool/explicit-null admission must refuse
+    # deterministically here instead of crashing or being silently
+    # normalized away. `"admission" in artifact` (not `artifact.get(...)`)
+    # is deliberate: it distinguishes a truly absent key from a key present
+    # with JSON `null`, which digest.py itself would otherwise treat the
+    # same (both decode to Python `None`) — this orchestration treats an
+    # explicit null as a malformed present value, not as absence.
+    admission_present = "admission" in artifact
+    admission_raw = artifact.get("admission")
+    if admission_present and not isinstance(admission_raw, dict):
+        return RunResult(
+            decision="REFUSED",
+            reason_code=MalformedInput.code,
+            message=(
+                f"{MalformedInput.code}: artifact.admission is present but not a "
+                f"JSON object (got {type(admission_raw).__name__})"
+            ),
+            receipt=None,
+        )
+
     try:
         proj = project(artifact)
     except (DigestScopeError, ContractDigestMismatch, ProjectionDomainError) as exc:
@@ -463,12 +524,18 @@ def run_specimen(
             name: _normalize_for_digest(value) for name, value in validated_params.items()
         },
     })
-    # AC-020 C3: bind the exact admission sibling context separately from
-    # contract_digest — evidence continuity only, never a claim that
-    # admission constitutes valid institutional authority. Missing/
-    # malformed `admission` digests as the canonical empty object.
-    admission = artifact.get("admission")
-    admission_digest = _digest_payload(admission if isinstance(admission, dict) else {})
+    # AC-020 C3 / AC-020A R2: bind the exact admission sibling context
+    # separately from contract_digest — evidence continuity only, never a
+    # claim that admission constitutes valid institutional authority.
+    # Presence-aware: an absent admission and a present-empty admission
+    # ({}) must never collapse to the same accepted binding, so the digest
+    # payload explicitly carries `present` alongside the exact admission
+    # object (validated dict-or-absent above; a present non-dict value
+    # already refused before this point is ever reached).
+    if admission_present:
+        admission_digest = _digest_payload({"present": True, "admission": admission_raw})
+    else:
+        admission_digest = _digest_payload({"present": False})
 
     payload = {
         "contract_digest": proj.contract_digest,

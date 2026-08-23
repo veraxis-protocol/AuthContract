@@ -1,12 +1,12 @@
 {
   "activation_id": "act:banking-specimen-001:v1",
-  "admission_digest": "sha256:8f094e3d78d9096dae553933a3e2f6b1fb76cdc149fdc118625351c9746e5d98",
+  "admission_digest": "sha256:1c631041f126de51afeeb5838d47501616083cd31d4ad0ca9691c71a74ec2a68",
   "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842",
   "decision": "ALLOW",
   "decision_time": "2026-08-23T00:10:00+00:00",
   "exact_action_digest": "sha256:55bc4dd36b705f58a123c110bc4d5b398182524cb51c4fae499c2c1455d6470f",
   "execution_result": "SIMULATED_SUCCESS",
   "projection_digest": "sha256:c7f6dccb5f3f6b7c70b305e838ad87877805d19bd6d3e225f41a40151aa5659b",
-  "receipt_digest": "sha256:ce4609753665c6e338079cea582efbda16af5a00f56c40e38af1e74a88722c5c",
+  "receipt_digest": "sha256:2cfa754d40ed2b9df4a4be7dcc0082bbc1097e2b6a88cb73ea9f9af950bc5a9a",
   "runtime_fact_set_digest": "sha256:57fe990d8320793f92894d31d16d55598e8f30cb63d227bd35e9b2bb3daaab09"
 }

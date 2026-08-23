@@ -1,6 +1,6 @@
-"""AC-019 / C-08, amended by AC-020 — CLI conformance: `authcontract
-run-specimen` and `authcontract verify-receipt`. Mirrors the style of
-test_cli_projection.py and test_git_gate.py."""
+"""AC-019 / C-08, amended by AC-020 and AC-020A — CLI conformance:
+`authcontract run-specimen` and `authcontract verify-receipt`. Mirrors the
+style of test_cli_projection.py and test_git_gate.py."""
 
 import json
 import subprocess
@@ -19,6 +19,12 @@ ARTIFACT = FIXTURES / "banking_payment_specimen.json"
 SUSPENDED_ARTIFACT = FIXTURES / "banking_payment_specimen_suspended.json"
 DUPLICATE_REQUIRED_FACT_ARTIFACT = FIXTURES / "banking_payment_specimen_duplicate_required_fact.json"
 BAD_CORROBORATION_REQUIRED_ARTIFACT = FIXTURES / "banking_payment_specimen_bad_corroboration_required.json"
+UNKNOWN_REQUIRED_FACT_FIELD_ARTIFACT = FIXTURES / "banking_payment_specimen_unknown_required_fact_field.json"
+ADMISSION_LIST_ARTIFACT = FIXTURES / "banking_payment_specimen_admission_list.json"
+ADMISSION_NULL_ARTIFACT = FIXTURES / "banking_payment_specimen_admission_null.json"
+ADMISSION_PRESENT_EMPTY_ARTIFACT = FIXTURES / "banking_payment_specimen_admission_present_empty.json"
+ADMISSION_ABSENT_ARTIFACT = FIXTURES / "banking_payment_specimen_admission_absent.json"
+ADMISSION_ALT_VALID_ARTIFACT = FIXTURES / "banking_payment_specimen_admission_alt_valid.json"
 ACTION = FIXTURES / "actions" / "send_payment_valid.json"
 UNKNOWN_ACTION = FIXTURES / "actions" / "send_payment_unknown_action_type.json"
 DOMAIN_ESCAPE_ACTION = FIXTURES / "actions" / "send_payment_unknown_parameter.json"
@@ -353,3 +359,91 @@ def test_project_command_still_works():
 def test_check_action_command_still_works():
     code = main(["check-action", str(ARTIFACT), str(ACTION)])
     assert code == 0
+
+
+# =========================================== AC-020A CLI-level hostile matrix
+
+def test_a1_cli_unknown_required_facts_declaration_field():
+    """A1, at the CLI level."""
+    result, passed = run_specimen_cli(
+        str(UNKNOWN_REQUIRED_FACT_FIELD_ARTIFACT), str(ACTION), str(FACTS_VALID), "NOT_EXECUTED"
+    )
+    assert passed is False
+    assert result["reason_code"] == "VEIP_MALFORMED_INPUT"
+
+
+def test_a1_cli_unknown_required_facts_declaration_field_nonzero_exit(capsys):
+    code = main([
+        "run-specimen", str(UNKNOWN_REQUIRED_FACT_FIELD_ARTIFACT), str(ACTION), str(FACTS_VALID),
+        "--execution-result", "NOT_EXECUTED",
+    ])
+    assert code != 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["reason_code"] == "VEIP_MALFORMED_INPUT"
+
+
+@pytest.mark.parametrize("bad_admission_artifact", [
+    ADMISSION_LIST_ARTIFACT,
+    ADMISSION_NULL_ARTIFACT,
+])
+def test_a5_cli_non_object_admission_refused(bad_admission_artifact):
+    """A5, at the CLI level. `run_specimen_cli` runs the artifact through
+    cli.py's own pre-existing `_validate_structure` (which already requires
+    every present sibling key, admission included, to be a JSON object)
+    BEFORE ever calling `run_specimen()` — so at this entry point the
+    controlled refusal surfaces as the earlier-layered `AC_INVALID_
+    STRUCTURE`, not `VEIP_MALFORMED_INPUT`. The library-level
+    `VEIP_MALFORMED_INPUT` path (this amendment's actual R2 repair) is
+    exercised directly in test_veip.py, for a caller that invokes
+    `run_specimen()` without going through this CLI pre-validation. Either
+    way the outcome required by A5 holds: controlled REFUSED, never an
+    uncaught exception."""
+    result, passed = run_specimen_cli(str(bad_admission_artifact), str(ACTION), str(FACTS_VALID), "NOT_EXECUTED")
+    assert passed is False
+    assert result["reason_code"] == "AC_INVALID_STRUCTURE"
+
+
+def test_a6_cli_present_empty_admission_refused_absent_admission_allows():
+    empty_result, empty_passed = run_specimen_cli(
+        str(ADMISSION_PRESENT_EMPTY_ARTIFACT), str(ACTION), str(FACTS_VALID), "NOT_EXECUTED"
+    )
+    assert empty_passed is False
+
+    absent_result, absent_passed = run_specimen_cli(
+        str(ADMISSION_ABSENT_ARTIFACT), str(ACTION), str(FACTS_VALID), "SIMULATED_SUCCESS"
+    )
+    assert absent_passed is True
+    assert absent_result["decision"] == "ALLOW"
+
+
+def test_a7_cli_two_distinct_valid_admission_objects_differ_only_in_admission_digest():
+    r1, p1 = run_specimen_cli(str(ARTIFACT), str(ACTION), str(FACTS_VALID), "SIMULATED_SUCCESS")
+    r2, p2 = run_specimen_cli(str(ADMISSION_ALT_VALID_ARTIFACT), str(ACTION), str(FACTS_VALID), "SIMULATED_SUCCESS")
+    assert p1 is True and p2 is True
+    assert r1["receipt"]["contract_digest"] == r2["receipt"]["contract_digest"]
+    assert r1["receipt"]["admission_digest"] != r2["receipt"]["admission_digest"]
+    assert r1["receipt"]["receipt_digest"] != r2["receipt"]["receipt_digest"]
+
+
+def test_a8_cli_old_receipt_against_absent_admission_refused():
+    result, passed = verify_receipt_cli(str(RECEIPT_VALID), str(ADMISSION_ABSENT_ARTIFACT), str(ACTION), str(FACTS_VALID))
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
+
+
+def test_a8_cli_old_receipt_against_alternate_valid_admission_refused():
+    result, passed = verify_receipt_cli(
+        str(RECEIPT_VALID), str(ADMISSION_ALT_VALID_ARTIFACT), str(ACTION), str(FACTS_VALID)
+    )
+    assert passed is False
+    assert result["reason_code"] == "VEIP_RECEIPT_MISMATCH"
+
+
+def test_a11_cli_readme_matches_da647ac_exactly():
+    """A11, verified at the file-system level via the same CLI test file."""
+    readme_path = ROOT / "README.md"
+    da647ac_readme = subprocess.run(
+        ["git", "show", "da647ac11222af149d9cbf36d511f6dc0ce50e96:README.md"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
+    ).stdout
+    assert readme_path.read_text() == da647ac_readme
