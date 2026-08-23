@@ -1,0 +1,10 @@
+{
+  "activation_id": "act:banking-specimen-001:v1",
+  "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842",
+  "decision": "ALLOW",
+  "exact_action_digest": "sha256:55bc4dd36b705f58a123c110bc4d5b398182524cb51c4fae499c2c1455d6470f",
+  "execution_result": "SIMULATED_SUCCESS",
+  "projection_digest": "sha256:c7f6dccb5f3f6b7c70b305e838ad87877805d19bd6d3e225f41a40151aa5659b",
+  "receipt_digest": "sha256:3b699dfbedea59468cf09f1d53a8d1e734d17d24a1c178e987c0db420945d3b0",
+  "runtime_fact_set_digest": "sha256:232296544b58d46f8ce6e89bbdd3c75477ff1759a7187863c3a406a33a48a7f5"
+}

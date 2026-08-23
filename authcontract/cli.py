@@ -1,9 +1,10 @@
-"""`authcontract verify|project|check-action|git-gate` — CLI over the digest
-(R01/AC-I06), projection/action-closure (AC-016), and Git merge-result
-admissibility (AC-018/C-07/D-006) gates.
+"""`authcontract verify|project|check-action|git-gate|run-specimen|
+verify-receipt` — CLI over the digest (R01/AC-I06), projection/action-
+closure (AC-016), Git merge-result admissibility (AC-018/C-07/D-006), and
+minimal VEIP-bound runtime decision + AEP-style receipt (AC-019/C-08) gates.
 
-MVP-alpha scope only. Does not implement VEIP binding, AEP reconstruction,
-or production provenance verification — those are later gates.
+MVP-alpha scope only. Does not implement production provenance
+verification, real payment execution, or general VEIP/AEP correctness.
 
 Same fail-closed discipline as `digest.py`/`facts.py`/`projection.py`: an
 unrecognised top-level shape, action, or parameter is a refusal, never a
@@ -28,6 +29,7 @@ from .projection import (
     projection_digest,
     projection_to_dict,
 )
+from .veip import ALLOWED_EXECUTION_RESULTS, run_specimen, verify_receipt
 
 #: The only top-level fields `verify_artifact` understands. Anything else is
 #: rejected rather than silently ignored — an ignored field could hide a
@@ -246,6 +248,108 @@ def git_gate_cli(context_path: str, repo_path: str) -> tuple[dict[str, Any], boo
     return result, True
 
 
+def _labeled_refused(code: str, message: str, **labels: str) -> dict[str, Any]:
+    result: dict[str, Any] = {"status": "REFUSED", "reason_code": code, "message": message}
+    result.update(labels)
+    return result
+
+
+def run_specimen_cli(
+    artifact_path: str, action_path: str, facts_path: str, execution_result: str
+) -> tuple[dict[str, Any], bool]:
+    """`authcontract run-specimen <artifact> <action> <facts> --execution-result <...>`.
+    Returns (result, passed). Composes verify -> project -> check_action ->
+    fact admission -> receipt issuance; never converts an upstream refusal
+    into ALLOW."""
+    labels = {
+        "artifact": os.path.basename(artifact_path),
+        "action_file": os.path.basename(action_path),
+        "facts_file": os.path.basename(facts_path),
+    }
+
+    artifact, error = _load_json_file(artifact_path, "artifact")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+    structure_error = _validate_structure(artifact)
+    if structure_error is not None:
+        return _labeled_refused("AC_INVALID_STRUCTURE", structure_error, **labels), False
+
+    action, error = _load_json_file(action_path, "action")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+
+    facts, error = _load_json_file(facts_path, "facts")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+
+    try:
+        result = run_specimen(artifact, action, facts, execution_result=execution_result)
+    except Exception as exc:  # fail closed on anything this CLI didn't anticipate
+        return _labeled_refused("AC_INTERNAL_ERROR", str(exc), **labels), False
+
+    if result.decision != "ALLOW":
+        return _labeled_refused(result.reason_code, result.message or "", **labels), False
+
+    return {
+        "status": "PASS",
+        "decision": "ALLOW",
+        "reason_code": "OK",
+        "receipt": result.receipt,
+        **labels,
+    }, True
+
+
+def verify_receipt_cli(
+    receipt_path: str, artifact_path: str, action_path: str, facts_path: str
+) -> tuple[dict[str, Any], bool]:
+    """`authcontract verify-receipt <receipt> <artifact> <action> <facts>`.
+    Returns (result, passed). Independently recomputes every binding from
+    the raw inputs — never trusts a digest merely because it is present in
+    the receipt file."""
+    labels = {
+        "receipt": os.path.basename(receipt_path),
+        "artifact": os.path.basename(artifact_path),
+        "action_file": os.path.basename(action_path),
+        "facts_file": os.path.basename(facts_path),
+    }
+
+    receipt, error = _load_json_file(receipt_path, "receipt")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+
+    artifact, error = _load_json_file(artifact_path, "artifact")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+    structure_error = _validate_structure(artifact)
+    if structure_error is not None:
+        return _labeled_refused("AC_INVALID_STRUCTURE", structure_error, **labels), False
+
+    action, error = _load_json_file(action_path, "action")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+
+    facts, error = _load_json_file(facts_path, "facts")
+    if error is not None:
+        code, message = error
+        return _labeled_refused(code, message, **labels), False
+
+    try:
+        result = verify_receipt(receipt, artifact, action, facts)
+    except Exception as exc:  # fail closed on anything this CLI didn't anticipate
+        return _labeled_refused("AC_INTERNAL_ERROR", str(exc), **labels), False
+
+    if result.status != "PASS":
+        return _labeled_refused(result.reason_code, result.message or "", **labels), False
+
+    return {"status": "PASS", "reason_code": "OK", **labels}, True
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="authcontract")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -278,6 +382,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to the Git repository to verify merge composition against (default: current directory)",
     )
 
+    run_specimen_parser = subparsers.add_parser(
+        "run-specimen",
+        help="Run the bounded VEIP-style runtime decision (verify -> project -> check-action -> fact admission) and issue an AEP-style receipt on ALLOW",
+    )
+    run_specimen_parser.add_argument("artifact", help="Path to the JSON artifact")
+    run_specimen_parser.add_argument("action", help="Path to a JSON action file")
+    run_specimen_parser.add_argument("facts", help="Path to a JSON facts/evidence bundle")
+    run_specimen_parser.add_argument(
+        "--execution-result",
+        required=True,
+        choices=sorted(ALLOWED_EXECUTION_RESULTS),
+        help="Bounded synthetic execution outcome to bind into the receipt",
+    )
+
+    verify_receipt_parser = subparsers.add_parser(
+        "verify-receipt",
+        help="Independently recompute an AEP-style receipt's bindings from the source artifact/action/facts and compare",
+    )
+    verify_receipt_parser.add_argument("receipt", help="Path to a JSON receipt")
+    verify_receipt_parser.add_argument("artifact", help="Path to the JSON artifact")
+    verify_receipt_parser.add_argument("action", help="Path to a JSON action file")
+    verify_receipt_parser.add_argument("facts", help="Path to a JSON facts/evidence bundle")
+
     return parser
 
 
@@ -302,6 +429,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "git-gate":
         result, passed = git_gate_cli(args.context, args.repo)
+        print(json.dumps(result, sort_keys=True))
+        return 0 if passed else 1
+
+    if args.command == "run-specimen":
+        result, passed = run_specimen_cli(args.artifact, args.action, args.facts, args.execution_result)
+        print(json.dumps(result, sort_keys=True))
+        return 0 if passed else 1
+
+    if args.command == "verify-receipt":
+        result, passed = verify_receipt_cli(args.receipt, args.artifact, args.action, args.facts)
         print(json.dumps(result, sort_keys=True))
         return 0 if passed else 1
 

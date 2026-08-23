@@ -1,0 +1,22 @@
+{
+  "now": "2026-08-23T00:10:00+00:00",
+  "facts": [
+    {
+      "fact_id": "secondary_approval.present",
+      "raw_value": true,
+      "wire_representation": "json_string",
+      "asserted_by": "TREASURY_APPROVAL_SERVICE",
+      "asserted_at": "2026-08-23T00:05:00+00:00",
+      "claimed_issuer": "TREASURY_APPROVAL_SERVICE",
+      "claimed_trust_basis": "signed_approval_record",
+      "claimed_assertion_path": "ATTESTED_CHANNEL",
+      "claimed_corroborated_by": null,
+      "evidence": {
+        "issuer": "TREASURY_APPROVAL_SERVICE",
+        "trust_basis": "signed_approval_record",
+        "assertion_path": "ATTESTED_CHANNEL",
+        "corroborated_by": null
+      }
+    }
+  ]
+}
