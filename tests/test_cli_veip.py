@@ -481,12 +481,32 @@ def test_a11a_cli_docstring_claim_ceiling():
     capability the accepted implementation and the repository's own
     docs/DEVELOPER-LANGUAGE.md guardrail deny. This test locks the
     correction in place so that overclaim cannot silently regress.
+
+    AC-021B C / B5-M4: a negative ban plus a single not-implemented
+    sentence does not guarantee each individual implemented-mechanics
+    anchor stays documented — a mutation could drop one anchor (e.g.
+    "checks Git merge-result composition") without reintroducing the
+    banned overclaim. This positively binds each accepted anchor so such
+    a drop is caught.
     """
     # Normalize whitespace so the check is resilient to docstring line
     # wrapping rather than depending on exact line breaks.
     docstring = " ".join((cli.__doc__ or "").split())
 
     assert "Checks whether a rule is supported by its source" not in docstring
+
+    for anchor in (
+        "verifies canonical artifact identity and bindings",
+        "projects and checks declared action domains",
+        "checks Git merge-result composition",
+        "runs the bounded runtime fact/action decision path",
+        "re-verifies receipt bindings",
+    ):
+        assert anchor in docstring, (
+            f"CLI docstring must positively document the implemented "
+            f"mechanics anchor {anchor!r} (AC-021B C)."
+        )
+
     assert (
         "Automated natural-language source-to-rule comparison is target "
         "behavior and is not implemented end to end"

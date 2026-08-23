@@ -707,6 +707,15 @@ def test_a11_readme_matches_da647ac_exactly():
     with natural-language source comparison, and must surface the
     current-vs-target implementation boundary before a reader reaches the
     first worked source-threshold example.
+
+    AC-021B closes ADJ-AC-021A finding B1: the AC-021A version of this
+    test relied only on negative phrase bans for the A7 quickstart
+    truthfulness requirement, which a mutation that avoids the exact
+    banned substring (e.g. "recompute proof from the source document")
+    could evade while still regressing. This adds positive bindings of
+    the accepted quickstart sentence and the accepted verifier-established
+    evidence-class boundary, kept alongside (not instead of) the existing
+    negative bans as defense in depth, per AC-021B's explicit instruction.
     """
     readme_path = FIXTURES.parent / "README.md"
     readme_text = readme_path.read_text()
@@ -758,6 +767,35 @@ def test_a11_readme_matches_da647ac_exactly():
     # from natural-language source material.
     assert "recompute a receipt from source" not in readme_text
 
+    # AC-021B A / B5-M1: ADJ-AC-021A B1 established that the negative ban
+    # above can be evaded by a mutation that avoids the exact banned
+    # substring while still reintroducing natural-language-source
+    # semantics (e.g. "recompute proof from the source document"). This
+    # positively binds the full accepted quickstart sentence so any such
+    # mutation is caught regardless of exact wording chosen.
+    assert (
+        "Re-run the evidence — independently recompute the receipt "
+        "bindings from the raw artifact, action, and fact inputs and "
+        "compare:"
+        in readme_text
+    )
+
+    # AC-021B B / B5-M2/M3: positive binding of the accepted
+    # verifier-established evidence-class boundary — not just the absence
+    # of the retired "independently verified" phrases. This also catches
+    # a mutation that removes the production-provenance boundary sentence
+    # from the runtime-fact paragraph without reintroducing either banned
+    # phrase.
+    assert "verifier-established context" in readme_text
+    assert "verifier-established assertion context" in readme_text
+    assert (
+        "The reference implementation binds and checks that supplied "
+        "verifier context against the assertion; it does not itself "
+        "establish how the underlying fact was verified in production "
+        "outside that interface."
+        in readme_text
+    )
+
     # AC-021A F3 / A4: the compact implementation-status note must appear
     # before the first worked source-threshold example.
     status_note_index = readme_text.index("**Implementation status:**")
@@ -770,6 +808,14 @@ def test_a11_readme_matches_da647ac_exactly():
         "the automated natural-language source-to-rule comparison shown "
         "in the examples below is target behavior and is not yet "
         "implemented end to end"
+        in readme_text
+    )
+    # AC-021B D: positively retain the one-synthetic-banking-specimen
+    # semantics of the early status note, not just the target/not-yet
+    # clause, so the note's meaning can't be quietly narrowed.
+    assert (
+        "The current code tests the mechanical trust chain for one "
+        "synthetic banking specimen"
         in readme_text
     )
 
