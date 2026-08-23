@@ -198,6 +198,19 @@ G/J/M re-audit, per-project evidence-appendix rows, exact Veridex/Kyndryl
 URLs, S6 hypothesis/counter-finding separation, corpus accounting) are
 preserved unchanged.
 
+### AC-024D (final consistency amendment — Microsoft E8 wording)
+
+Independent review (ADJ-AC-024C) found one residual cross-section
+inconsistency: the §2 Microsoft Agent Governance Toolkit bullet stated the
+README "explicitly does not claim to enforce policies derived from those
+frameworks," overstating an inspection absence as an explicit source
+statement, inconsistent with §4's own E8-bounded framing of the identical
+evidence. §2 now reads: the README maps its controls to the four named
+frameworks as compliance mappings and users author their own YAML
+policies; in the inspected README, no claim was found that those
+frameworks are the derivation source of the enforced policy. No matrix,
+S1–S7, claim-ceiling, or corpus change was required or made.
+
 ---
 
 ## 1. Landscape in one table
@@ -298,7 +311,7 @@ This is the fastest-moving tier in the whole landscape (most of it shipped
 in the last 12 months) and the one most likely to be stale by the time you
 read this:
 
-- **[Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** — the README's own status label is **"Public Preview"** ("production-quality public preview releases. May have breaking changes before GA") — this document preserves that label. Deterministic interception of agent tool calls, YAML/OPA/Cedar policy, zero-trust identity (SPIFFE/DID/mTLS), Merkle-chained tamper-evident audit log, multi-language SDKs, explicit `GovernanceDenied` records. The README maps its controls to OWASP Agentic AI Top 10, NIST AI RMF, EU AI Act, and SOC 2 as *compliance mappings* — it explicitly does not claim to enforce policies *derived from* those frameworks; users author their own YAML policies. High materiality — see [§4](#4-high-materiality-deep-dives).
+- **[Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** — the README's own status label is **"Public Preview"** ("production-quality public preview releases. May have breaking changes before GA") — this document preserves that label. Deterministic interception of agent tool calls, YAML/OPA/Cedar policy, zero-trust identity (SPIFFE/DID/mTLS), Merkle-chained tamper-evident audit log, multi-language SDKs, explicit `GovernanceDenied` records. **Correction from AC-024C (AC-024D consistency amendment):** the prior wording here ("it explicitly does not claim to enforce policies *derived from* those frameworks") overstated an inspection absence as an explicit source statement, inconsistent with §4's own E8-bounded framing. The README maps its controls to OWASP Agentic AI Top 10, NIST AI RMF, EU AI Act, and SOC 2 as *compliance mappings*; users author their own YAML policies. In the inspected README, no claim was found that those frameworks are the derivation source of the enforced policy. High materiality — see [§4](#4-high-materiality-deep-dives).
 - **[Permit0](https://github.com/permit0-ai/permit0)** — pre-execution, deterministic action-authorization layer for agents, publishing what it calls a "canonical, append-only vocabulary" (its "canonical action taxonomy") of what agents do, with a separately-described "signed audit trail" for decisions; Apache-2.0, Rust. **Correction from AC-024B:** the compound phrase "replayable and signed" describing decisions does not appear verbatim in the README — that was this document's own paraphrase, not a quotation. No explicit maturity/status label was found in the inspected README.
 - **[Veridex / agentic-payments](https://github.com/veridex-protocol/agentic-payments)** (plus [`agents-treasury`](https://github.com/veridex-protocol)) — session-key-scoped autonomous agent payments with an 8-rule `PolicyEngine`, signed `EvidenceBundle`, multi-chain support. High materiality — see [§4](#4-high-materiality-deep-dives) for the quote-level analysis of what its README actually says.
 - **[OpenEAGO](https://github.com/finos-labs/open-eago)** (FINOS Labs) — enterprise agent governance/orchestration overlay with jurisdiction enforcement, HITL, and real-time compliance checks against GDPR/DORA/EU AI Act/SR 11-7/BCBS 239/PCI-DSS/MiFID-II/EMIR. No explicit maturity/status label was found in the inspected `overview.md`. High materiality — see [§4](#4-high-materiality-deep-dives).
