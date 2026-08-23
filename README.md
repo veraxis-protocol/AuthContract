@@ -8,6 +8,7 @@ v0.2.1 normative baseline that are testable without a running policy engine.
 | `authcontract/digest.py` | **R01** canonical object partition | AC-I06 |
 | `authcontract/facts.py` | **R10** runtime fact contract | AC-I15 |
 | `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 / AC-017 |
+| `authcontract/git_gate.py` | Git merge-result admissibility | AC-018 / C-07 / D-006 |
 
 ## Why the partition
 
@@ -134,6 +135,70 @@ respectively — see `authcontract.projection.select_matching_projection` and
 synthetic specimen, not a universal policy-conflict solver, and is not yet
 wired into a CLI command of its own (no VEIP-style decision layer exists to
 call it from at this stage).
+
+## Adjudicate Git merge-result admissibility
+
+```bash
+authcontract git-gate context.json --repo .
+```
+
+D-006: PASS maps to success; FAIL/UNRESOLVED/ERROR are merge-blocking;
+neutral/skipped states never become a green required check; final merge
+composition is adjudicated, never only an isolated PR head.
+
+`context.json` is a deterministic record of one AuthContract evaluation:
+
+```json
+{
+  "conclusion": "PASS",
+  "repository": "veraxis-protocol/AuthContract",
+  "event_type": "pull_request",
+  "base_ref": "main",
+  "expected_base_sha": "<base SHA as known by the PR event, possibly stale>",
+  "head_sha": "<PR head SHA>",
+  "merge_result_sha": "<the SHA that was actually evaluated — the test-merge/merge-queue result, not the head>",
+  "evaluated_sha": "<the SHA the test/evaluation command actually ran against>"
+}
+```
+
+`--repo` points at a live Git checkout (or a synthetic test repository) the
+gate uses to independently verify merge composition — it never trusts a
+caller-asserted "verified" claim. `current_base_sha` is always re-resolved
+from `--repo`'s own ref state at adjudication time (preferring a freshly
+fetched `refs/remotes/origin/<base_ref>`, falling back to a local branch),
+and `merge_result_sha` must provably contain both that current base and
+`head_sha` as ancestors.
+
+| Condition | reason_code |
+|---|---|
+| `conclusion` is not exactly one of `PASS`/`FAIL`/`UNRESOLVED`/`ERROR` (includes `NEUTRAL`, `SKIPPED`, `CANCELLED`, missing, or any other value) | `GIT_NEUTRAL_CONCLUSION` |
+| required context field missing/malformed, current base ref cannot be resolved, `evaluated_sha`/`merge_result_sha` is the isolated PR head, `expected_base_sha` is stale relative to the freshly-fetched current base, or `merge_result_sha` does not provably bind the current base and/or the PR head | `GIT_MERGE_RESULT_UNVERIFIED` |
+| `conclusion` is `FAIL` over a verified merge result | `GIT_FAIL` |
+| `conclusion` is `UNRESOLVED` over a verified merge result | `GIT_UNRESOLVED` |
+| `conclusion` is `ERROR` over a verified merge result | `GIT_ERROR` |
+
+Exits `0` only for `conclusion: PASS` over a verified merge result;
+everything else exits non-zero — see `tests/test_git_gate.py` for the full
+conclusion-mapping matrix and a reproducible synthetic stale-base scenario
+(temporary Git repositories, never this repository's own `main`).
+
+### Live GitHub Actions path
+
+`.github/workflows/authcontract-gate.yml` runs a dedicated required-check
+job named **AuthContract Gate** on `pull_request`. It checks out the PR's
+GitHub-computed test-merge commit (`fetch-depth: 0`, so ancestry is
+verifiable — not merely the PR head), runs the full test suite against that
+merged composition, and feeds the result into `authcontract git-gate`
+against the checkout itself. No `continue-on-error`, no `if: always()`
+bypass, no optional/allowed-failure path exists in that job — a blocking
+conclusion fails it outright. The existing `.github/workflows/ci.yml`
+matrix is unchanged and runs independently.
+
+**A green `AuthContract Gate` workflow run is not, by itself, proof that
+GitHub will block a merge on it failing.** That requires branch
+protection/a ruleset naming this check as required — see the AC-018 return
+record for whether that was actually established for this repository at
+the time of this candidate.
 
 ## Test
 

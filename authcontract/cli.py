@@ -1,5 +1,6 @@
-"""`authcontract verify|project|check-action` — CLI over the digest (R01/
-AC-I06) and projection/action-closure (AC-016) gates.
+"""`authcontract verify|project|check-action|git-gate` — CLI over the digest
+(R01/AC-I06), projection/action-closure (AC-016), and Git merge-result
+admissibility (AC-018/C-07/D-006) gates.
 
 MVP-alpha scope only. Does not implement VEIP binding, AEP reconstruction,
 or production provenance verification — those are later gates.
@@ -17,6 +18,7 @@ import os
 from typing import Any
 
 from .digest import ContractDigestMismatch, DigestScopeError, verify_artifact
+from .git_gate import GitGateRefusal, adjudicate
 from .projection import (
     InactiveContract,
     ProjectionDomainError,
@@ -187,6 +189,63 @@ def check_action_cli(fixture_path: str, action_path: str) -> tuple[dict[str, Any
     }, True
 
 
+_GIT_GATE_FIELDS = (
+    "conclusion",
+    "repository",
+    "event_type",
+    "base_ref",
+    "base_sha",
+    "current_base_sha",
+    "head_sha",
+    "merge_result_sha",
+    "evaluated_sha",
+)
+
+
+def _git_gate_refused(code: str, message: str, context_name: str) -> dict[str, Any]:
+    result: dict[str, Any] = {"status": "REFUSED", "reason_code": code, "message": message}
+    for field in _GIT_GATE_FIELDS:
+        result[field] = None
+    result["context_file"] = context_name
+    return result
+
+
+def git_gate_cli(context_path: str, repo_path: str) -> tuple[dict[str, Any], bool]:
+    """`authcontract git-gate <context.json> [--repo <path>]`. Returns
+    (result, passed). Adjudicates an AuthContract evaluation conclusion
+    against Git merge composition verified live in `repo_path` — never
+    trusts a caller-asserted "verified" claim in the context file itself.
+    """
+    context_name = os.path.basename(context_path)
+
+    raw, error = _load_json_file(context_path, "context")
+    if error is not None:
+        code, message = error
+        return _git_gate_refused(code, message, context_name), False
+
+    if not isinstance(raw, dict):
+        return _git_gate_refused(
+            "GIT_MERGE_RESULT_UNVERIFIED", "context must be a JSON object", context_name
+        ), False
+
+    try:
+        result = adjudicate(raw, repo_path)
+    except GitGateRefusal as exc:
+        refused: dict[str, Any] = {
+            "status": "REFUSED",
+            "reason_code": exc.code,
+            "message": str(exc),
+        }
+        refused.update(exc.context)
+        refused["context_file"] = context_name
+        return refused, False
+    except Exception as exc:  # fail closed on anything this CLI didn't anticipate
+        return _git_gate_refused("AC_INTERNAL_ERROR", str(exc), context_name), False
+
+    result["context_file"] = context_name
+    return result, True
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="authcontract")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -208,6 +267,17 @@ def _build_parser() -> argparse.ArgumentParser:
     check_action_parser.add_argument("fixture", help="Path to the JSON artifact")
     check_action_parser.add_argument("action", help="Path to a JSON action file")
 
+    git_gate_parser = subparsers.add_parser(
+        "git-gate",
+        help="Adjudicate an AuthContract evaluation conclusion against verified Git merge composition",
+    )
+    git_gate_parser.add_argument("context", help="Path to a JSON git-gate context file")
+    git_gate_parser.add_argument(
+        "--repo",
+        default=".",
+        help="Path to the Git repository to verify merge composition against (default: current directory)",
+    )
+
     return parser
 
 
@@ -227,6 +297,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "check-action":
         result, passed = check_action_cli(args.fixture, args.action)
+        print(json.dumps(result, sort_keys=True))
+        return 0 if passed else 1
+
+    if args.command == "git-gate":
+        result, passed = git_gate_cli(args.context, args.repo)
         print(json.dumps(result, sort_keys=True))
         return 0 if passed else 1
 

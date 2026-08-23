@@ -1,0 +1,67 @@
+name: AuthContract Gate
+
+# AC-018 / C-07 / D-006 — evaluates the PR's test-merge composition (base +
+# head merged), not merely the isolated PR head, and blocks on anything
+# other than an admissible PASS over a verified merge result. No
+# continue-on-error, no if: always() bypass, no optional/allowed-failure
+# path: a blocking AuthContract Gate conclusion fails this job outright.
+#
+# merge_group is intentionally not added as a trigger: this repository has
+# no merge queue configured. Add it if/when one is enabled.
+
+on:
+  pull_request:
+
+jobs:
+  gate:
+    name: AuthContract Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR test-merge composition
+        uses: actions/checkout@v4
+        with:
+          # Default ref for a pull_request-triggered workflow is GitHub's
+          # own ephemeral merge commit (refs/pull/<n>/merge, i.e.
+          # github.sha here) — base merged with head, not just the head.
+          # fetch-depth: 0 is required so merge-base --is-ancestor can
+          # actually establish base/head ancestry against this commit; a
+          # shallow checkout cannot.
+          fetch-depth: 0
+
+      - name: Fetch current base
+        run: git fetch origin "${{ github.event.pull_request.base.ref }}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[test]"
+
+      - name: Run AuthContract test suite against the merge composition
+        id: tests
+        run: |
+          if pytest -q; then
+            echo "conclusion=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "conclusion=FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build git-gate context
+        run: |
+          cat > gate-context.json <<JSON
+          {
+            "conclusion": "${{ steps.tests.outputs.conclusion }}",
+            "repository": "${{ github.repository }}",
+            "event_type": "${{ github.event_name }}",
+            "base_ref": "${{ github.event.pull_request.base.ref }}",
+            "expected_base_sha": "${{ github.event.pull_request.base.sha }}",
+            "head_sha": "${{ github.event.pull_request.head.sha }}",
+            "merge_result_sha": "${{ github.sha }}",
+            "evaluated_sha": "${{ github.sha }}"
+          }
+          JSON
+          cat gate-context.json
+
+      - name: Adjudicate Git merge-result admissibility
+        run: authcontract git-gate gate-context.json --repo .
