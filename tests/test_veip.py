@@ -689,7 +689,7 @@ def test_a10_positive_specimen_allows_only_after_all_gates_pass():
 
 
 def test_a11_readme_matches_da647ac_exactly():
-    """A11: README.md carries the AC-021 developer-language freeze.
+    """A11: README.md carries the AC-021/AC-021A developer-language freeze.
 
     This test previously asserted README.md was byte-identical to the
     da647ac reference. That invariant existed specifically to block
@@ -698,11 +698,15 @@ def test_a11_readme_matches_da647ac_exactly():
     AC-021 was named as the sole future authorized documentation rewrite.
     AC-021 has now executed that rewrite, so the byte-identity check is
     retired by design (not deleted — corrected in place) and replaced
-    with checks for the invariants AC-021 actually requires: the frozen
-    product sentence, runtime-continuity language, the claim ceiling, the
-    policy-engine distinction, and that deep ontology vocabulary
-    (OIC/ZTL/OAM/VEIP/AEP) does not lead the document ahead of the
-    developer-facing Quick start section.
+    with checks for the invariants AC-021 and AC-021A actually require.
+
+    AC-021A additionally hardens this test against the three claim-ceiling
+    overclaims ADJ-AC-021 established (R1-R4): the README must not upgrade
+    the accepted verifier-established evidence class to "independently
+    verified", must not blur the mechanical receipt-binding recomputation
+    with natural-language source comparison, and must surface the
+    current-vs-target implementation boundary before a reader reaches the
+    first worked source-threshold example.
     """
     readme_path = FIXTURES.parent / "README.md"
     readme_text = readme_path.read_text()
@@ -711,9 +715,63 @@ def test_a11_readme_matches_da647ac_exactly():
         "Proof that the rule you shipped is actually supported by the source."
         in readme_text
     )
+
+    # AC-021A F2: the exact developer spine sentence is the guardrail of
+    # record in docs/DEVELOPER-LANGUAGE.md (verified separately below); the
+    # frozen README itself carries the same spine vocabulary across several
+    # narrative variants (e.g. "source → rule → PR → check → merge →
+    # runtime → proof" near the top, "source → rule → diff → test →
+    # failure → CI → merge → ship" in "The developer workflow") rather
+    # than one unbroken sentence, so this checks the vocabulary is present
+    # rather than requiring a single literal string that the frozen
+    # artifact itself never used.
+    guardrail_text = (FIXTURES.parent / "docs" / "DEVELOPER-LANGUAGE.md").read_text()
+    assert (
+        "source → rule → diff → test → CI/check → PASS/FAIL/UNRESOLVED → "
+        "merge → ship → runtime → proof"
+        in guardrail_text
+    )
+    for term in (
+        "source", "rule", "diff", "test", "CI", "PASS", "FAIL",
+        "UNRESOLVED", "merge", "ship", "runtime", "proof",
+    ):
+        assert term in readme_text
+
     assert "Re-run the evidence." in readme_text
     assert "does **not** currently claim" in readme_text
     assert "AuthContract is not a policy engine" in readme_text
+
+    # AC-021A F4: README must say NL source-to-rule comparison is not yet
+    # implemented end to end.
+    assert (
+        "is the product's target capability and is not yet implemented "
+        "end to end"
+        in readme_text
+    )
+
+    # AC-021A F5 / A5: the known evidence-class overclaim phrases from
+    # ADJ-AC-021 R2 must not reappear anywhere in the README.
+    assert "independently verified assertion context" not in readme_text
+    assert "against independently verified context" not in readme_text
+
+    # AC-021A F3 / A7: quickstart must not imply verify-receipt recomputes
+    # from natural-language source material.
+    assert "recompute a receipt from source" not in readme_text
+
+    # AC-021A F3 / A4: the compact implementation-status note must appear
+    # before the first worked source-threshold example.
+    status_note_index = readme_text.index("**Implementation status:**")
+    first_example_index = readme_text.index("## See it in a pull request")
+    assert status_note_index < first_example_index, (
+        "the compact implementation-status note must appear before the "
+        "first worked source-threshold example, per ADJ-AC-021 R4."
+    )
+    assert (
+        "the automated natural-language source-to-rule comparison shown "
+        "in the examples below is target behavior and is not yet "
+        "implemented end to end"
+        in readme_text
+    )
 
     quick_start_index = readme_text.index("## Quick start")
     for term in ("OIC", "ZTL", "OAM", "VEIP", "AEP"):

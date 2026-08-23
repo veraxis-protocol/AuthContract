@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from authcontract import cli
 from authcontract.cli import main, run_specimen_cli, verify_receipt_cli
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -463,3 +464,31 @@ def test_a11_cli_readme_matches_da647ac_exactly():
     quick_start_index = readme_text.index("## Quick start")
     for term in ("OIC", "ZTL", "OAM", "VEIP", "AEP"):
         assert readme_text.index(term) > quick_start_index
+
+    # AC-021A F5 / A5: the known evidence-class overclaim phrases must not
+    # reappear in the README.
+    assert "independently verified assertion context" not in readme_text
+    assert "against independently verified context" not in readme_text
+
+
+def test_a11a_cli_docstring_claim_ceiling():
+    """AC-021A F6/F7, A6: the CLI module docstring must describe only
+    currently implemented mechanics, not the target automated
+    natural-language source-to-rule comparison.
+
+    ADJ-AC-021 R1 established that the AC-021 docstring's "Checks whether
+    a rule is supported by its source" sentence asserted an implemented
+    capability the accepted implementation and the repository's own
+    docs/DEVELOPER-LANGUAGE.md guardrail deny. This test locks the
+    correction in place so that overclaim cannot silently regress.
+    """
+    # Normalize whitespace so the check is resilient to docstring line
+    # wrapping rather than depending on exact line breaks.
+    docstring = " ".join((cli.__doc__ or "").split())
+
+    assert "Checks whether a rule is supported by its source" not in docstring
+    assert (
+        "Automated natural-language source-to-rule comparison is target "
+        "behavior and is not implemented end to end"
+        in docstring
+    )

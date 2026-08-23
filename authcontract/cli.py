@@ -1,12 +1,15 @@
 """`authcontract verify|project|check-action|git-gate|run-specimen|
 verify-receipt` — the AuthContract developer CLI.
 
-Checks whether a rule is supported by its source, whether an action is
-covered by the rule, whether a PR's merge result was actually what got
-tested, and whether a runtime decision plus its proof receipt hold up to
-independent re-verification. Every command prints one deterministic JSON
-object and exits non-zero on any refusal — never a silently-ignored field
-that could produce a false PASS.
+Developer CLI for AuthContract's currently implemented verification
+mechanics. It verifies canonical artifact identity and bindings, projects
+and checks declared action domains, checks Git merge-result composition,
+runs the bounded runtime fact/action decision path, and re-verifies
+receipt bindings. Automated natural-language source-to-rule comparison is
+target behavior and is not implemented end to end in this reference
+implementation. Every command prints one deterministic JSON object and
+exits non-zero on any refusal — never a silently-ignored field that could
+produce a false PASS.
 
 Bounded reference implementation, tested for one synthetic banking
 specimen. Does not implement production provenance verification, real

@@ -49,6 +49,10 @@ AuthContract also asks:
 
 ---
 
+**Implementation status:** experimental reference implementation. The current code tests the mechanical trust chain for one synthetic banking specimen; the automated natural-language source-to-rule comparison shown in the examples below is target behavior and is not yet implemented end to end. See [Current status](#current-status) for the full boundary.
+
+---
+
 ## See it in a pull request
 
 Suppose the source says:
@@ -455,7 +459,7 @@ authcontract run-specimen \
   --execution-result SIMULATED_SUCCESS
 ```
 
-Re-run the evidence — independently recompute a receipt from source and compare:
+Re-run the evidence — independently recompute the receipt bindings from the raw artifact, action, and fact inputs and compare:
 
 ```bash
 authcontract verify-receipt \
@@ -604,7 +608,7 @@ Observed
 The action was not evaluated with this fact.
 ```
 
-This is enforced through verified-assertion binding: the fact gate checks the caller's claim — the value, who asserted it, and when — against independently verified context, not the claim alone. A claim that disagrees with the verified context refuses, even if the verified context alone would otherwise be admissible.
+This is enforced through verified-assertion binding: the fact gate checks the caller's claim — the value, who asserted it, and when — against verifier-established context, not the claim alone. A claim that disagrees with the verifier-established context refuses, even if the verifier-established context alone would otherwise be admissible. The reference implementation binds and checks that supplied verifier context against the assertion; it does not itself establish how the underlying fact was verified in production outside that interface.
 
 ---
 
@@ -926,7 +930,7 @@ The current repository demonstrates and tests bounded pieces of the intended cha
 - active/inactive rule behavior;
 - overlapping-rule conflict detection;
 - Git merge-result admissibility;
-- runtime fact admissibility bound to independently verified assertion context — the fact gate checks a caller's claim (value, asserter, timing) against verified evidence, not the claim alone;
+- runtime fact admissibility bound to verifier-established assertion context — the fact gate checks a caller's claim (value, asserter, timing) against verifier-established evidence, not the claim alone;
 - a bounded runtime decision and AEP-style evidence-reconstruction path — verify the artifact, project it, admit its runtime facts, check the action, and issue a receipt on PASS — tested and accepted for one synthetic banking specimen;
 - closed, fail-closed input shapes for runtime facts, rule declarations, and the receipt's admission binding.
 
