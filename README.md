@@ -7,7 +7,7 @@ v0.2.1 normative baseline that are testable without a running policy engine.
 |---|---|---|
 | `authcontract/digest.py` | **R01** canonical object partition | AC-I06 |
 | `authcontract/facts.py` | **R10** runtime fact contract | AC-I15 |
-| `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 |
+| `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 / AC-017 |
 
 ## Why the partition
 
@@ -93,10 +93,35 @@ drops fields) on:
 
 | Condition | reason_code |
 |---|---|
+| projection's `activation_state` is not exactly `"ACTIVE"` (SUSPENDED, REVOKED, missing, or any other value) | `RUN_INACTIVE_CONTRACT` |
 | action type not declared by the contract | `RUN_UNCLASSIFIED_ACTION` |
+| unknown top-level field on the action input, unknown field anywhere in `projection_domain`/an action spec/a parameter spec | `RUN_DOMAIN_ESCAPE` |
 | unknown parameter | `RUN_DOMAIN_ESCAPE` |
 | missing required parameter | `RUN_DOMAIN_ESCAPE` |
 | parameter value outside declared type/enum (e.g. a float where `decimal(N)` requires a string) | `RUN_DOMAIN_ESCAPE` |
+
+`activation_state` is checked before the action is evaluated against the
+domain at all — an inactive contract refuses every action, regardless of
+whether the action itself is otherwise well-formed (AC-017 F1). `project()`
+still builds a `Projection` for a SUSPENDED/REVOKED fixture (needed for
+inspection and `select_matching_projection`'s overlap checks); only
+`check_action`/`check-action` enforce activation.
+
+`projection_domain`, each action spec, each parameter spec, and the action
+input each have an exact allowed-key set (AC-017 F2) — see
+`authcontract.projection.PROJECTION_DOMAIN_ALLOWED_KEYS` and its siblings.
+An unrecognised key at any of these levels refuses rather than being
+silently dropped, and a declared `required` field must be a real boolean
+(not a truthy string or number).
+
+Enum membership is checked with strict type semantics (AC-017 F3): each
+enum member is itself validated against the parameter's declared
+`value_type` when the domain is loaded (a boolean enum may contain only
+`true`/`false`, an integer enum only genuine ints — never `bool`, a
+`decimal(N)` enum only decimal strings), and membership comparison at
+action-check time never falls back to Python's cross-type `==` — so an
+integer `1` can never satisfy a boolean enum containing `true`, and vice
+versa.
 
 `fixtures/actions/` holds the committed action specimen matrix exercising each
 case above against `fixtures/banking_payment_specimen.json`.

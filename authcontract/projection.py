@@ -59,6 +59,23 @@ class ContractScopeConflict(ValueError):
     code = "CONTRACT_SCOPE_CONFLICT"
 
 
+class InactiveContract(ValueError):
+    """RUN_INACTIVE_CONTRACT — AC-017 F1. The action pre-decision gate
+    refuses because the projection's activation_state is not exactly
+    "ACTIVE" (including SUSPENDED, REVOKED, missing, or any unrecognised
+    value). project() may still construct a Projection for an inactive
+    contract for inspection/overlap purposes; only check_action refuses."""
+    code = "RUN_INACTIVE_CONTRACT"
+
+
+#: AC-017 F2 — the bounded schema actually implemented. A key outside these
+#: sets is refused, never silently ignored.
+PROJECTION_DOMAIN_ALLOWED_KEYS = frozenset({"actions"})
+ACTION_SPEC_ALLOWED_KEYS = frozenset({"parameters"})
+PARAMETER_SPEC_ALLOWED_KEYS = frozenset({"value_type", "required", "enum"})
+ACTION_INPUT_ALLOWED_KEYS = frozenset({"action_type", "parameters"})
+
+
 @dataclass(frozen=True)
 class Projection:
     """Deterministic operational projection of one verified artifact.
@@ -86,12 +103,84 @@ def _validate_value_type(value_type: Any) -> None:
     )
 
 
+def _strict_type_equal(a: Any, b: Any) -> bool:
+    """Equality that never collapses across types.
+
+    AC-017 F3: plain Python `==`/`in` lets `True == 1` and `Decimal('1') ==
+    1` succeed, which can make a malformed or wrong-type value falsely
+    appear to be an in-domain enum member. `type(a) is type(b)` is checked
+    first so no numeric-tower or Decimal coercion can smuggle a match
+    through.
+    """
+    return type(a) is type(b) and a == b
+
+
+def _validate_enum_members(action_type: str, param_name: str, value_type: str, enum: list) -> None:
+    """AC-017 F3: every enum member must itself satisfy `value_type` under
+    strict type semantics — validated once, at domain-validation time, so a
+    malformed enum can never even reach action evaluation."""
+    decimal_match = _DECIMAL_TYPE.match(value_type) if isinstance(value_type, str) else None
+
+    for member in enum:
+        where = f"enum member {member!r} of {action_type}.{param_name}"
+        if decimal_match:
+            scale = int(decimal_match.group(1))
+            if type(member) is not str:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} must be a decimal string "
+                    f"for {value_type}, not {type(member).__name__}"
+                )
+            try:
+                decimal_member = Decimal(member)
+            except InvalidOperation as exc:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} is not a valid decimal string"
+                ) from exc
+            if not decimal_member.is_finite():
+                raise ProjectionDomainError(f"{ProjectionDomainError.code}: {where} is not finite")
+            if -decimal_member.as_tuple().exponent > scale:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} exceeds declared scale {scale}"
+                )
+        elif value_type == "boolean":
+            if type(member) is not bool:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} must be a bool, not "
+                    f"{type(member).__name__}"
+                )
+        elif value_type == "integer":
+            # type(x) is int already excludes bool: type(True) is bool, not int.
+            if type(member) is not int:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} must be an int (never a "
+                    f"bool), got {type(member).__name__}"
+                )
+        elif value_type == "string":
+            if type(member) is not str:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: {where} must be a str, not "
+                    f"{type(member).__name__}"
+                )
+
+
 def _validate_domain_shape(domain: Any) -> None:
     """Refuse a malformed/unsupported domain declaration rather than
-    silently accepting whatever shape happens to be present."""
+    silently accepting whatever shape happens to be present.
+
+    AC-017 F2: every level enforces its exact allowed key set — an unknown
+    key anywhere in projection_domain/action-spec/parameter-spec is a
+    refusal, never a silently-ignored field.
+    """
     if not isinstance(domain, dict):
         raise ProjectionDomainError(
             f"{ProjectionDomainError.code}: projection_domain must be an object"
+        )
+
+    unknown_domain_keys = sorted(set(domain) - PROJECTION_DOMAIN_ALLOWED_KEYS)
+    if unknown_domain_keys:
+        raise ProjectionDomainError(
+            f"{ProjectionDomainError.code}: projection_domain has unsupported "
+            f"field(s) {unknown_domain_keys}"
         )
 
     actions = domain.get("actions")
@@ -102,11 +191,23 @@ def _validate_domain_shape(domain: Any) -> None:
         )
 
     for action_type, action_spec in actions.items():
+        if not action_type or not isinstance(action_type, str):
+            raise ProjectionDomainError(
+                f"{ProjectionDomainError.code}: action type {action_type!r} must be "
+                "a non-empty string"
+            )
         if not isinstance(action_spec, dict):
             raise ProjectionDomainError(
                 f"{ProjectionDomainError.code}: action '{action_type}' spec must "
                 "be an object"
             )
+        unknown_action_keys = sorted(set(action_spec) - ACTION_SPEC_ALLOWED_KEYS)
+        if unknown_action_keys:
+            raise ProjectionDomainError(
+                f"{ProjectionDomainError.code}: action '{action_type}' has "
+                f"unsupported field(s) {unknown_action_keys}"
+            )
+
         parameters = action_spec.get("parameters")
         if not isinstance(parameters, dict):
             raise ProjectionDomainError(
@@ -114,18 +215,41 @@ def _validate_domain_shape(domain: Any) -> None:
                 "parameters object"
             )
         for param_name, param_spec in parameters.items():
+            if not param_name or not isinstance(param_name, str):
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: parameter name {param_name!r} of "
+                    f"action '{action_type}' must be a non-empty string"
+                )
             if not isinstance(param_spec, dict):
                 raise ProjectionDomainError(
                     f"{ProjectionDomainError.code}: parameter '{param_name}' of "
                     f"action '{action_type}' spec must be an object"
                 )
-            _validate_value_type(param_spec.get("value_type"))
-            enum = param_spec.get("enum")
-            if enum is not None and not isinstance(enum, list):
+            unknown_param_keys = sorted(set(param_spec) - PARAMETER_SPEC_ALLOWED_KEYS)
+            if unknown_param_keys:
                 raise ProjectionDomainError(
                     f"{ProjectionDomainError.code}: parameter '{param_name}' of "
-                    f"action '{action_type}' has a non-list enum"
+                    f"action '{action_type}' has unsupported field(s) {unknown_param_keys}"
                 )
+
+            value_type = param_spec.get("value_type")
+            _validate_value_type(value_type)
+
+            if "required" in param_spec and type(param_spec["required"]) is not bool:
+                raise ProjectionDomainError(
+                    f"{ProjectionDomainError.code}: parameter '{param_name}' of "
+                    f"action '{action_type}' declares non-boolean `required` "
+                    f"({type(param_spec['required']).__name__})"
+                )
+
+            enum = param_spec.get("enum")
+            if enum is not None:
+                if not isinstance(enum, list):
+                    raise ProjectionDomainError(
+                        f"{ProjectionDomainError.code}: parameter '{param_name}' of "
+                        f"action '{action_type}' has a non-list enum"
+                    )
+                _validate_enum_members(action_type, param_name, value_type, enum)
 
 
 def project(artifact: dict[str, Any]) -> Projection:
@@ -229,24 +353,61 @@ def _check_value(action_type: str, param_name: str, spec: dict[str, Any], value:
         )
 
     enum = spec.get("enum")
-    if enum is not None and normalized not in enum and value not in enum:
-        raise ProjectionDomainError(
-            f"{ProjectionDomainError.code}: {action_type}.{param_name} = {value!r} is "
-            f"not one of the declared values {enum!r}"
-        )
+    if enum is not None:
+        if decimal_match:
+            # Enum members are validated decimal strings (F3); compare on
+            # the Decimal level so "500" and "500.00" are recognised as the
+            # same declared value, without ever falling back to Python's
+            # cross-type `==` on the raw member string.
+            in_enum = any(_strict_type_equal(normalized, Decimal(member)) for member in enum)
+        else:
+            in_enum = any(_strict_type_equal(normalized, member) for member in enum)
+        if not in_enum:
+            raise ProjectionDomainError(
+                f"{ProjectionDomainError.code}: {action_type}.{param_name} = {value!r} is "
+                f"not one of the declared values {enum!r}"
+            )
 
     return normalized
 
 
 def check_action(projection: Projection, action: dict[str, Any]) -> dict[str, Any]:
     """Pre-decision boundary gate. Returns validated/typed parameters, or
-    raises UnclassifiedAction / ProjectionDomainError. Never falls through
-    to a wildcard/catch-all action class.
+    raises InactiveContract / UnclassifiedAction / ProjectionDomainError.
+    Never falls through to a wildcard/catch-all action class.
+
+    AC-017 F1: refuses unless `projection.activation_state == "ACTIVE"` —
+    checked before the action is evaluated against the domain at all, so a
+    SUSPENDED/REVOKED/missing/unrecognised activation state can never reach
+    PASS regardless of how well-formed the action itself is. `project()`
+    still constructs Projections for inactive contracts (needed for
+    inspection and `select_matching_projection`'s overlap checks) — only
+    this pre-decision gate enforces activation.
     """
     if not isinstance(action, dict):
         raise ProjectionDomainError(f"{ProjectionDomainError.code}: action must be an object")
 
+    unknown_action_keys = sorted(set(action) - ACTION_INPUT_ALLOWED_KEYS)
+    if unknown_action_keys:
+        raise ProjectionDomainError(
+            f"{ProjectionDomainError.code}: action has unsupported top-level "
+            f"field(s) {unknown_action_keys}"
+        )
+
+    if projection.activation_state != "ACTIVE":
+        raise InactiveContract(
+            f"{InactiveContract.code}: projection activation_state is "
+            f"{projection.activation_state!r}, not ACTIVE — the action "
+            "pre-decision gate refuses any action under an inactive contract"
+        )
+
     action_type = action.get("action_type")
+    if not action_type or not isinstance(action_type, str):
+        raise ProjectionDomainError(
+            f"{ProjectionDomainError.code}: action_type {action_type!r} must be a "
+            "non-empty string"
+        )
+
     actions = projection.domain.get("actions", {})
     if action_type not in actions:
         raise UnclassifiedAction(

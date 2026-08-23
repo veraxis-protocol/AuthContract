@@ -18,6 +18,7 @@ from typing import Any
 
 from .digest import ContractDigestMismatch, DigestScopeError, verify_artifact
 from .projection import (
+    InactiveContract,
     ProjectionDomainError,
     UnclassifiedAction,
     check_action,
@@ -169,7 +170,7 @@ def check_action_cli(fixture_path: str, action_path: str) -> tuple[dict[str, Any
 
     try:
         validated = check_action(proj, action)
-    except (UnclassifiedAction, ProjectionDomainError) as exc:
+    except (InactiveContract, UnclassifiedAction, ProjectionDomainError) as exc:
         return _refused(exc.code, str(exc), fixture_name), False
     except Exception as exc:  # fail closed on anything this CLI didn't anticipate
         return _refused("AC_INTERNAL_ERROR", str(exc), fixture_name), False

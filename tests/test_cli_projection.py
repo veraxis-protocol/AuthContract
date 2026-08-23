@@ -136,17 +136,23 @@ def test_check_action_repeated_call_is_deterministic():
     assert r1 == r2
 
 
-def test_check_action_against_suspended_fixture_still_projects_but_pre_decision_only():
-    """check_action_cli only checks against ONE fixture's own projection — it
-    does not itself enforce activation_state (that's select_matching_projection's
-    job across multiple candidates, exercised in test_projection.py). A single
-    SUSPENDED fixture's domain still type-checks the action at this boundary."""
+def test_check_action_against_suspended_fixture_is_refused():
+    """AC-017 F1 correction: this test previously asserted PASS here, on the
+    theory that check_action only type-checks the action and activation
+    enforcement was select_matching_projection's job alone. Independent
+    review established that reasoning as a false-green path — the public
+    check-action CLI must never return PASS for a SUSPENDED/REVOKED
+    contract, since nothing else in the single-fixture CLI path enforces
+    activation. check_action itself now refuses unless activation_state ==
+    "ACTIVE"; see test_projection.py's F1 coverage for the Python-level
+    matrix (ACTIVE/SUSPENDED/REVOKED/unknown)."""
     result, passed = check_action_cli(
         str(FIXTURES / "banking_payment_specimen_suspended.json"),
         str(ACTIONS / "send_payment_valid.json"),
     )
-    assert passed is True
-    assert result["status"] == "PASS"
+    assert passed is False
+    assert result["status"] == "REFUSED"
+    assert result["reason_code"] == "RUN_INACTIVE_CONTRACT"
 
 
 def test_check_action_missing_action_file_is_io_error(capsys):
