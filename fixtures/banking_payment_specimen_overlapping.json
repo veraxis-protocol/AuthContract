@@ -1,0 +1,54 @@
+{
+  "activation": {
+    "activation_id": "act:banking-specimen-002:v1",
+    "contract_digest": "sha256:601fcc26e8e508f6d1ddefcbdbea4eeb3cc6928d8cd48f57c1e8b9aa3d932b85",
+    "state": "ACTIVE"
+  },
+  "admission": {
+    "approvals": [],
+    "contract_digest": "sha256:601fcc26e8e508f6d1ddefcbdbea4eeb3cc6928d8cd48f57c1e8b9aa3d932b85"
+  },
+  "contract": {
+    "identity": {
+      "contract_id": "ac:payments:us:banking-specimen-002",
+      "version": "0.2.1"
+    },
+    "projection_domain": {
+      "actions": {
+        "send_payment": {
+          "parameters": {
+            "amount": {
+              "required": true,
+              "value_type": "decimal(2)"
+            },
+            "beneficiary_account": {
+              "required": true,
+              "value_type": "string"
+            },
+            "currency": {
+              "enum": [
+                "USD",
+                "EUR"
+              ],
+              "required": true,
+              "value_type": "string"
+            },
+            "secondary_approval_present": {
+              "required": true,
+              "value_type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "subject": {
+      "mediated_actions": [
+        "send_payment"
+      ],
+      "system": "refund-agent"
+    }
+  },
+  "proof": {
+    "contract_digest": "sha256:601fcc26e8e508f6d1ddefcbdbea4eeb3cc6928d8cd48f57c1e8b9aa3d932b85"
+  }
+}

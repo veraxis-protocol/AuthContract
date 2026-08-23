@@ -7,6 +7,7 @@ v0.2.1 normative baseline that are testable without a running policy engine.
 |---|---|---|
 | `authcontract/digest.py` | **R01** canonical object partition | AC-I06 |
 | `authcontract/facts.py` | **R10** runtime fact contract | AC-I15 |
+| `authcontract/projection.py` | machine-checkable projection domain + closed mediated-action universe | AC-016 |
 
 ## Why the partition
 
@@ -62,9 +63,52 @@ print one deterministic JSON object to stdout:
 | `cross_object_substitution.json` | `REFUSED` / `AC_DIGEST` |
 
 This CLI implements only the currently-tested canonical partition/digest/binding
-rules (`authcontract/digest.py`). It does not implement policy projection,
-mediated-action closure, VEIP decision binding, AEP reconstruction, or
-production PKI/provenance verification — those are later gates.
+rules (`authcontract/digest.py`). It does not implement VEIP decision binding,
+AEP reconstruction, or production PKI/provenance verification — those are
+later gates.
+
+## Project a fixture
+
+```bash
+authcontract project fixtures/banking_payment_specimen.json
+```
+
+Computes the deterministic operational projection of one fixture: an explicit
+machine-checkable projection domain (`contract.projection_domain`), bound to
+`contract_digest` and activation identity, with its own stable
+`projection_digest`. A fixture with no `projection_domain` refuses with
+`RUN_DOMAIN_ESCAPE` (e.g. AC-015's `fixtures/valid.json` — projection is
+opt-in per contract, not retrofitted onto every fixture).
+
+## Check an action against a fixture's projection domain
+
+```bash
+authcontract check-action fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json
+```
+
+The closed mediated-action universe pre-decision gate: `<action-json>` is a
+path to a committed JSON file `{"action_type": "...", "parameters": {...}}`,
+matching `<fixture>`'s own file-path convention. Refuses (never coerces or
+drops fields) on:
+
+| Condition | reason_code |
+|---|---|
+| action type not declared by the contract | `RUN_UNCLASSIFIED_ACTION` |
+| unknown parameter | `RUN_DOMAIN_ESCAPE` |
+| missing required parameter | `RUN_DOMAIN_ESCAPE` |
+| parameter value outside declared type/enum (e.g. a float where `decimal(N)` requires a string) | `RUN_DOMAIN_ESCAPE` |
+
+`fixtures/actions/` holds the committed action specimen matrix exercising each
+case above against `fixtures/banking_payment_specimen.json`.
+
+Two ACTIVE contracts matching the same action with no declared
+precedence/composition rule, and zero ACTIVE contracts matching an action,
+are refused as `CONTRACT_SCOPE_CONFLICT` and `RUN_UNCLASSIFIED_ACTION`
+respectively — see `authcontract.projection.select_matching_projection` and
+`tests/test_projection.py`. This is a bounded runtime closure check for one
+synthetic specimen, not a universal policy-conflict solver, and is not yet
+wired into a CLI command of its own (no VEIP-style decision layer exists to
+call it from at this stage).
 
 ## Test
 

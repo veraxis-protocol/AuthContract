@@ -1,0 +1,71 @@
+{
+  "activation": {
+    "activation_id": "act:banking-specimen-001:v1",
+    "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842",
+    "state": "ACTIVE"
+  },
+  "admission": {
+    "approvals": [
+      {
+        "approval_id": "approval:xyz",
+        "approver": "ops-lead"
+      }
+    ],
+    "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842"
+  },
+  "contract": {
+    "identity": {
+      "contract_id": "ac:payments:us:banking-specimen-001",
+      "version": "0.2.1"
+    },
+    "projection_domain": {
+      "actions": {
+        "send_payment": {
+          "parameters": {
+            "amount": {
+              "required": true,
+              "value_type": "decimal(2)"
+            },
+            "beneficiary_account": {
+              "required": true,
+              "value_type": "string"
+            },
+            "currency": {
+              "enum": [
+                "USD",
+                "EUR"
+              ],
+              "required": true,
+              "value_type": "string"
+            },
+            "secondary_approval_present": {
+              "required": true,
+              "value_type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "required_facts": [
+      {
+        "assertion_path": "ATTESTED_CHANNEL",
+        "fact_id": "secondary_approval.present",
+        "freshness_seconds": 900,
+        "issuer": "TREASURY_APPROVAL_SERVICE",
+        "self_assertion_policy": "PROHIBITED",
+        "trust_basis": "signed_approval_record",
+        "value_type": "boolean",
+        "wire_representation": "json_boolean"
+      }
+    ],
+    "subject": {
+      "mediated_actions": [
+        "send_payment"
+      ],
+      "system": "payment-agent"
+    }
+  },
+  "proof": {
+    "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842"
+  }
+}

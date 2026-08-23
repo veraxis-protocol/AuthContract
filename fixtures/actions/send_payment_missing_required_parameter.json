@@ -1,0 +1,8 @@
+{
+  "action_type": "send_payment",
+  "parameters": {
+    "amount": "500.00",
+    "beneficiary_account": "acct:9001",
+    "secondary_approval_present": true
+  }
+}

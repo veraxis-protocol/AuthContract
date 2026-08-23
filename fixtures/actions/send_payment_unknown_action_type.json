@@ -1,0 +1,9 @@
+{
+  "action_type": "issue_refund",
+  "parameters": {
+    "amount": "500.00",
+    "beneficiary_account": "acct:9001",
+    "currency": "USD",
+    "secondary_approval_present": true
+  }
+}
