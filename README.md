@@ -156,7 +156,7 @@ Note that **no receipt is issued on refusal** — a refused decision never produ
 |---|---|
 | `status` | `PASS` or `REFUSED` — the outcome of the check |
 | `decision` | `ALLOW` on a permitted action; absent on refusal |
-| `reason_code` | Stable machine-facing identifier (e.g. `RUN_FACT_STALE`). Safe to branch on |
+| `reason_code` | Machine-facing identifier (e.g. `RUN_FACT_STALE`). Branch on this rather than on prose — but see the note below on cross-version stability |
 | `message` | Human-readable explanation of a refusal |
 | `contract_digest` | Canonical identity (RFC 8785 JCS + SHA-256) of the rule that applied |
 | `projection_digest` | Identity of the action domain the rule was projected into |
@@ -169,6 +169,8 @@ Note that **no receipt is issued on refusal** — a refused decision never produ
 Every digest is recomputable from raw inputs. That is what makes the receipt checkable by a third party rather than merely assertable by you.
 
 Exit codes: `0` pass · `1` refusal.
+
+**On `reason_code` stability.** Reason codes are the intended programmatic signal within the currently documented and tested interface, and are accurate for this commit. This repository does **not** yet establish a versioned public-interface commitment that they remain unchanged across future releases — no versioning or pinning mechanism exists. Re-check them if you upgrade, and do not treat them as a frozen API contract. `message` is human-readable and is not contractual at any version.
 
 ---
 
@@ -263,6 +265,30 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
+| Use AuthContract from an AI coding agent | [`AGENTS.md`](AGENTS.md) |
+
+---
+
+## Getting help, reporting problems, and commercial use
+
+| | |
+|---|---|
+| **Found a bug, or a claim that doesn't hold?** | Open a [GitHub issue](https://github.com/veraxis-protocol/AuthContract/issues). Reproduction steps against the committed fixtures are the most useful thing you can include. |
+| **Benchmark didn't reproduce?** | Include your OS, Python version, and the `benchmarks/results/` JSON your run produced — the harness records the DUT and harness SHAs it verified. |
+| **Commercial or institutional use** | [veraxis.io](https://veraxis.io) |
+
+**Contributions.** There is no contribution process established yet, and no
+contributor licence or review policy exists. Issues are the reliable path today.
+If you are considering a substantive contribution, open an issue first so it
+isn't wasted effort.
+
+**A note on scope of support.** This is an experimental reference implementation
+maintained as research and engineering evidence. There is no support commitment,
+response-time expectation, or maintenance guarantee attached to it.
+
+If the clean-room run above was useful to you, a GitHub star helps other
+engineers evaluating this space find it — entirely optional, and only if it
+actually earned one.
 
 ---
 ---
