@@ -12,7 +12,7 @@
     "Latency and throughput figures are single-process, single-machine, and environment-specific."
   ],
   "environment": {
-    "commit_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "commit_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
     "dependency_versions": {
       "pytest": "9.1.1",
       "rfc8785": "0.1.4"
@@ -23,9 +23,32 @@
     "processor": "x86_64",
     "python_implementation": "CPython",
     "python_version": "3.11.15",
-    "tree_sha": "9967077e7f9f9c661199c728c5a2e7fe496be07a"
+    "tree_sha": "61375c762b1e9b9e9e602adf7921df7da17d9456"
   },
-  "generated_at_utc": "2026-08-24T13:12:02Z",
+  "generated_at_utc": "2026-08-24T13:43:12Z",
+  "provenance": {
+    "benchmark_harness_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
+    "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "dut_verification": {
+      "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+      "dut_paths": [
+        "authcontract",
+        "tests",
+        "fixtures",
+        ".github",
+        "pyproject.toml",
+        "README.md",
+        "docs/SOTA.md",
+        "docs/SOTA-EVIDENCE.md",
+        "docs/DEVELOPER-LANGUAGE.md",
+        "docs/CLEANROOM-VALIDATION-RUNBOOK.md"
+      ],
+      "modified_dut_files": [],
+      "statement": "All device-under-test paths are byte-identical to e4e1a97509df1a66c44b090c0a0ca0a03907f4dc; the benchmark harness changed nothing under measurement.",
+      "verified": true
+    },
+    "note": "DUT_BASE_SHA is the AuthContract implementation being measured. BENCHMARK_HARNESS_SHA is the commit containing the harness that measured it \u2014 necessarily a later commit, since the harness did not exist at DUT_BASE_SHA. Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
+  },
   "resources": {
     "artifact_sizes": {
       "action": 148,
@@ -51,22 +74,22 @@
     "process_max_rss": {
       "note": "whole-process peak RSS at end of benchmark run, including interpreter and harness",
       "unit": "kilobytes",
-      "value": 64804
+      "value": 64708
     },
     "process_startup": {
-      "max": 122.74,
-      "mean": 79.64,
-      "min": 60.44,
+      "max": 87.95,
+      "mean": 67.66,
+      "min": 60.54,
       "samples": [
-        91.1,
-        122.74,
-        62.11,
-        60.44,
-        61.84
+        65.18,
+        87.95,
+        63.09,
+        60.54,
+        61.51
       ],
       "unit": "milliseconds",
       "what": "python -c 'import authcontract.veip', out-of-process, 5 samples"
     }
   },
-  "work_order": "AC-035"
+  "work_order": "AC-035 / AC-035A"
 }

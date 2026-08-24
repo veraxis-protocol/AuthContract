@@ -1,7 +1,8 @@
 # AuthContract — TRL assessment (AC-035)
 
-**Commit assessed:** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
-**Basis:** the AC-035 benchmark run only. Architecture documents, design intent,
+**Implementation assessed (DUT):** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
+**Measured by harness:** `a7f6ba374b1362e624a3f8b912b265dd03da4cdd`
+**Basis:** the AC-035 benchmark run only, as amended by AC-035A. Architecture documents, design intent,
 and roadmap items are explicitly **not** counted as evidence.
 
 ---
@@ -15,7 +16,7 @@ much of the system is written.
 |---|---|---|
 | **Implemented** | YES | Canonical digest, projection, fact admission, decision path, receipt emission, receipt verification, Git merge-result gate. 2,401 lines across 8 runtime modules. |
 | **Demonstrated** | YES | Complete E2E path executes: 7/7 E2E specimens, 38/38 adversarial specimens, 342 regression tests pass. |
-| **Benchmarked** | YES | Per-stage latency distributions (n=1000–2000), throughput, two scale curves, determinism over 100 replays, resource profile. This document's basis. |
+| **Benchmarked** | YES | Per-stage latency distributions (n=1000–2000), *observed* sustained throughput (3 trials × 5 s per operation, not merely derived from latency), two scale curves, determinism over 100 replays, resource profile — all against a DUT verified byte-identical to the declared base commit before measuring. This document's basis. |
 | **Externally validated** | **NO** | Every specimen, fixture, and expectation was authored by the same party that authored the implementation. No external rule has been encoded; no third party has reproduced or reviewed the results. Clean-room external *testability* was established in AC-028, but by this same executor — not by an independent evaluator. |
 | **Production validated** | **NO** | No deployment, no real workload, no concurrency, no persistence, no operational history. |
 
@@ -60,10 +61,16 @@ measured environment is laboratory-constructed:
 The rigor of the *evidence discipline* exceeds typical TRL 4: measured
 distributions rather than anecdotes, an adversarial matrix rather than
 happy-path demos, findings recorded rather than silently repaired (AC-035-F1
-through F4), and explicit `NOT EVALUATED` markers rather than estimates. That
-methodological maturity is a genuine TRL 5 characteristic. It does not by
-itself raise the TRL, because TRL is determined by the *environment* the
-evidence was gathered in, not by the quality of the measurement.
+through F4), explicit `NOT EVALUATED` markers rather than estimates, observed
+sustained throughput rather than a latency reciprocal, and a device-under-test
+whose identity is verified before measurement rather than asserted afterwards.
+That methodological maturity is a genuine TRL 5 characteristic.
+
+It does not by itself raise the TRL. **TRL is determined by the environment the
+evidence was gathered in, not by the quality of the measurement** — improving
+benchmark methodology (as AC-035A did) makes the TRL 4 assessment *better
+supported*, not higher. External independent reproduction remains absent, which
+is the binding constraint.
 
 ---
 

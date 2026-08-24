@@ -1,9 +1,18 @@
 # AuthContract benchmark baseline
 
-**Commit measured:** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
+**DUT_BASE_SHA (implementation measured):** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
 **Tree:** `9967077e7f9f9c661199c728c5a2e7fe496be07a`
-**Work order:** AC-035
+**BENCHMARK_HARNESS_SHA (harness that measured it):** `a7f6ba374b1362e624a3f8b912b265dd03da4cdd`
+**Work order:** AC-035, amended by AC-035A
 **Raw results:** [`benchmarks/results/`](../benchmarks/results/)
+
+> **Provenance.** These are two different commits by necessity — the harness
+> cannot exist at the commit it measures. Reproduce from
+> `BENCHMARK_HARNESS_SHA`; `benchmarks/` does not exist at `DUT_BASE_SHA`.
+> Before measuring, the harness diffs every device-under-test path against
+> `DUT_BASE_SHA` and **refuses to run on any drift** (exit 2), so the claim
+> "these numbers describe `e4e1a975`" is verified rather than asserted. This
+> run: `verified: true`, zero modified DUT files.
 
 This is the first end-to-end operational and performance baseline for
 AuthContract. It measures the bounded MVP-alpha path that exists today. It is
@@ -83,60 +92,92 @@ Warm figures, warmup discarded. Microseconds.
 
 | Stage | n | p50 | p95 | p99 | mean |
 |---|---:|---:|---:|---:|---:|
-| contract parse | 2000 | 9.6 | 15.1 | 18.0 | 10.6 |
-| validation + binding | 2000 | 104.0 | 159.6 | 173.9 | 112.4 |
-| canonicalization (JCS) | 2000 | 88.6 | 140.9 | 158.5 | 96.4 |
-| canonical digest | 2000 | 87.9 | 158.6 | 166.8 | 98.8 |
-| projection | 2000 | 122.9 | 170.7 | 181.5 | 124.2 |
-| projection digest | 2000 | 61.0 | 79.5 | 89.1 | 59.4 |
-| action check | 2000 | 7.8 | 11.2 | 13.4 | 8.4 |
-| decision + receipt | 1000 | 376.4 | 484.7 | 562.4 | 377.6 |
-| receipt verification | 1000 | 453.6 | 569.0 | 634.3 | 445.6 |
-| **complete end-to-end** | **1000** | **701.6** | **1083.3** | **1149.9** | **760.8** |
+| contract parse | 2000 | 9.1 | 12.7 | 17.6 | 10.9 |
+| validation + binding | 2000 | 86.9 | 123.2 | 157.8 | 94.6 |
+| canonicalization (JCS) | 2000 | 83.9 | 143.6 | 155.0 | 90.8 |
+| canonical digest | 2000 | 85.6 | 107.9 | 146.4 | 88.6 |
+| projection | 2000 | 99.5 | 141.8 | 184.3 | 105.5 |
+| projection digest | 2000 | 42.9 | 60.7 | 77.5 | 45.4 |
+| action check | 2000 | 5.0 | 8.5 | 10.8 | 5.6 |
+| decision + receipt | 1000 | 264.9 | 365.3 | 492.5 | 283.1 |
+| receipt verification | 1000 | 279.4 | 382.4 | 491.1 | 295.7 |
+| **complete end-to-end** | **1000** | **574.0** | **1052.5** | **1111.2** | **633.1** |
 
 Run-to-run variation on this shared machine is roughly ±15% on the end-to-end
-figure (a prior run measured p50 616 µs). The relative cost of stages is stable
-across runs; treat the absolute numbers as an order-of-magnitude baseline, not
-a precise constant.
+figure. The relative cost of stages is stable across runs; treat the absolute
+numbers as an order-of-magnitude baseline, not a precise constant.
 
 Stage figures are **not additive** into the end-to-end figure: `decision +
 receipt` already contains projection and action check.
 
 ### What the distribution says
 
-- **Canonicalization is the dominant primitive cost.** At ~96 µs it is roughly
-  11× the action check and accounts for most of validation, digest, and
+- **Canonicalization is the dominant primitive cost.** At ~91 µs it is roughly
+  16× the action check and accounts for most of validation, digest, and
   projection cost. Every one of those stages canonicalizes.
-- **The authorization logic itself is nearly free.** Action check is 8.4 µs —
-  about 1% of the end-to-end path. Cost is overwhelmingly in canonical identity,
+- **The authorization logic itself is nearly free.** Action check is 5.6 µs —
+  under 1% of the end-to-end path. Cost is overwhelmingly in canonical identity,
   not in deciding.
-- **Verification costs as much as deciding** (446 µs vs 378 µs), because
+- **Verification costs as much as deciding** (296 µs vs 283 µs), because
   `verify_receipt` recomputes every binding from raw inputs rather than trusting
   any field in the receipt. This is the property that makes receipts
   independently checkable; the cost is the point, not a defect.
-- **p99 is ~1.6× p50**, with no long tail — consistent with a pure-CPU path with
+- **p99 is ~1.9× p50**, with no long tail — consistent with a pure-CPU path with
   no I/O, locking, or allocation cliffs.
 
 ---
 
 ## 5. Throughput
 
-Single process, single thread, derived from warm mean latency.
+Two figures, deliberately reported separately. Conflating them is how benchmarks
+overstate capacity.
 
-| Metric | Rate |
+### 5a. Observed sustained rate — the real measurement
+
+Continuous single-process, single-threaded loop over a fixed wall-clock window.
+**3 trials × 5 s each, 1 s warmup per trial.**
+
+| Operation | min | **median** | max | total ops |
+|---|---:|---:|---:|---:|
+| Decision + receipt | 3,258.9 | **3,383.8** | 3,423.9 | 50,335 |
+| Receipt verification | 3,178.2 | **3,212.9** | 3,237.4 | 48,145 |
+| **Complete end-to-end** | **1,512.9** | **1,574.4** | **1,587.5** | **23,375** |
+
+Trial spread is under 7% for every operation, so the median is a stable
+estimate rather than a lucky draw.
+
+### 5b. Latency-derived rate — arithmetic, not measurement
+
+| Operation | Derived rate |
 |---|---:|
-| Decisions / sec | 2,648 |
-| Receipts / sec | 2,648 |
-| Receipt verifications / sec | 2,244 |
-| Complete E2E transactions / sec | 1,314 |
+| Decisions / sec | 3,532.7 |
+| Receipts / sec | 3,532.7 |
+| Receipt verifications / sec | 3,382.0 |
+| Complete E2E transactions / sec | 1,579.6 |
+
+This is the reciprocal of mean latency. It assumes zero loop overhead and no
+drift under continuous operation, so it is an *upper-bound estimate*, not an
+observed capacity.
+
+### What the gap says
+
+The two agree to within ~0.3% on the end-to-end path (1,579.6 derived vs 1,574.4
+observed). The derived figure runs slightly high, which is the expected
+direction: it excludes loop overhead that real sustained operation pays. The
+direction is not perfectly consistent across runs — an earlier run had the
+observed figure slightly *above* the derived one, because per-sample
+`perf_counter` overhead in the latency measurement can itself exceed loop
+overhead. Both readings sit inside run-to-run noise; the honest summary is that
+the two methods agree closely here, and the observed figure is the one to quote.
 
 Decisions/sec and receipts/sec are the *same measurement*: receipt emission is
 not separately callable at this commit. A complete E2E transaction is
 decide-plus-independently-verify, which is why it is roughly half the decision
 rate.
 
-**Not claimed:** distributed throughput, multi-core scaling, or sustained
-throughput under concurrency. No concurrency layer exists at this commit.
+**Not claimed:** distributed throughput, multi-core scaling, or throughput under
+concurrency. No concurrency layer exists at this commit and none was introduced
+to measure one.
 
 ---
 
@@ -146,13 +187,13 @@ throughput under concurrency. No concurrency layer exists at this commit.
 
 | Actions | mean latency | peak traced memory | decision |
 |---:|---:|---:|---|
-| 1 | 407 µs | 6.1 KiB | ALLOW |
-| 10 | 1,202 µs | 9.4 KiB | ALLOW |
-| 100 | 8,489 µs | 40.8 KiB | ALLOW |
-| 1,000 | 81,995 µs | 366.1 KiB | ALLOW |
+| 1 | 280 µs | 6.1 KiB | ALLOW |
+| 10 | 1,009 µs | 9.4 KiB | ALLOW |
+| 100 | 8,127 µs | 40.8 KiB | ALLOW |
+| 1,000 | 78,032 µs | 366.1 KiB | ALLOW |
 
-1000× the domain size costs ~201× the time and ~60× the memory. Growth is
-linear in the large-N regime (the 100→1000 step costs ~9.7× for 10× the size)
+1000× the domain size costs ~279× the time and ~60× the memory. Growth is
+linear in the large-N regime (the 100→1000 step costs ~9.6× for 10× the size)
 with a fixed overhead that dominates at small N, which is why the endpoint ratio
 reads as sublinear.
 
@@ -160,16 +201,16 @@ reads as sublinear.
 
 | Facts | mean latency | peak traced memory | decision |
 |---:|---:|---:|---|
-| 10 | 1,016 µs | 15.9 KiB | ALLOW |
-| 100 | 6,531 µs | 140.5 KiB | ALLOW |
-| 1,000 | 57,995 µs | 1.3 MiB | ALLOW |
-| 10,000 | 566,644 µs | 13.1 MiB | ALLOW |
+| 10 | 954 µs | 15.8 KiB | ALLOW |
+| 100 | 6,978 µs | 140.7 KiB | ALLOW |
+| 1,000 | 68,148 µs | 1.3 MiB | ALLOW |
+| 10,000 | 648,173 µs | 13.1 MiB | ALLOW |
 
-1000× the fact count costs ~558× the time and ~847× the memory — linear in
+1000× the fact count costs ~680× the time and ~852× the memory — linear in
 both, with no observed nonlinear degradation or cliff in the tested range. Each
-10× step costs ~9–10× consistently.
+10× step costs ~8–10× consistently.
 
-**Practical reading:** a 10,000-fact contract takes ~0.57 s and ~13 MiB per
+**Practical reading:** a 10,000-fact contract takes ~0.65 s and ~13 MiB per
 decision. That is workable for batch evaluation and marginal for interactive
 use. The linearity means cost is predictable; the constant is dominated by
 repeated canonicalization (§8, finding F2).
@@ -223,7 +264,7 @@ break in the evidence chain.
 
 **AC-035-F2 — Canonicalization is repeated several times per transaction.**
 Validation, digest, and projection each canonicalize, and `verify_receipt`
-re-runs the whole decision path. At ~96 µs per canonicalization this is the
+re-runs the whole decision path. At ~91 µs per canonicalization this is the
 dominant cost and the clearest optimization target. It is *correct* — recomputing
 rather than trusting is the security property — but it is not currently *cached*
 within a single transaction.
@@ -249,7 +290,7 @@ refused with `AC_DIGEST`.
 
 | Metric | Value |
 |---|---|
-| Interpreter + import cost | 60–123 ms (mean 80 ms), out-of-process |
+| Interpreter + import cost | 61–88 ms (mean 68 ms), out-of-process |
 | Peak traced memory, one decision | 6.07 KiB |
 | Peak traced memory, one verification | 6.19 KiB |
 | Process max RSS (whole benchmark) | ~63 MiB |
@@ -266,8 +307,8 @@ Artifact sizes (compact JSON, bytes):
 | Projection | 479 |
 | Receipt | 715 |
 
-Process startup (~80 ms) is **more than two orders of magnitude larger** than a
-single decision (~0.38 ms). Any deployment shape that pays interpreter startup
+Process startup (~68 ms) is **more than two orders of magnitude larger** than a
+single decision (~0.28 ms). Any deployment shape that pays interpreter startup
 per decision would be dominated entirely by startup.
 
 ---

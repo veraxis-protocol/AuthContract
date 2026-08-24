@@ -6,19 +6,48 @@ This suite measures **only capabilities that exist** at the commit under test.
 Where the architecture cannot express a dimension, the result is recorded as
 `NOT EVALUATED` rather than estimated.
 
+## Two commits, and why that matters
+
+A benchmark harness cannot exist at the commit it measures — it is written
+afterwards. So there are two distinct SHAs, and conflating them makes the
+results unreproducible:
+
+| | |
+|---|---|
+| **`DUT_BASE_SHA`** | `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc` — the AuthContract implementation **being measured** |
+| **`BENCHMARK_HARNESS_SHA`** | `a7f6ba374b1362e624a3f8b912b265dd03da4cdd` — the commit containing the **harness that measured it** |
+
+**Check out the harness commit, not the DUT commit.** `benchmarks/` does not
+exist at `e4e1a975`; an earlier draft of this file said otherwise and was
+wrong.
+
+What makes the two safely comparable is not assertion but verification: before
+any measurement runs, `verify_dut_unchanged()` diffs every device-under-test
+path (`authcontract/`, `tests/`, `fixtures/`, `.github/`, `pyproject.toml`,
+`README.md`, and the SOTA/language/runbook docs) against `DUT_BASE_SHA`. If any
+byte differs, the harness **refuses to run** and exits 2, because results that
+silently measured a drifted tree would not describe the commit they claim to.
+
 ## Reproduce
 
 ```bash
 git clone https://github.com/veraxis-protocol/AuthContract.git
 cd AuthContract
-git checkout e4e1a97509df1a66c44b090c0a0ca0a03907f4dc
+git checkout a7f6ba374b1362e624a3f8b912b265dd03da4cdd   # BENCHMARK_HARNESS_SHA
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[test]"
 python3 benchmarks/run_benchmarks.py
 ```
 
-Runtime is roughly 45 seconds. Results are written to `benchmarks/results/`.
-The process exits non-zero if any correctness specimen fails.
+Equivalently, check out the AC-035 branch head — the harness code is unchanged
+between `a7f6ba3` and the branch tip, which adds only refreshed results and
+documentation.
+
+The run prints the DUT and harness SHAs it verified before measuring. Runtime
+is roughly 100 seconds (the sustained-throughput phase alone is 3 operations ×
+3 trials × 6 s). Results are written to `benchmarks/results/`. Exit codes: `0` all
+specimens pass, `1` a correctness specimen failed, `2` DUT drift detected and
+nothing was measured.
 
 ## Layout
 
@@ -42,8 +71,16 @@ as n/min/p50/p95/p99/max/mean/stdev in microseconds. Very fast stages use an
 inner batch so they are measured above timer resolution rather than quantized
 to zero.
 
-**Throughput.** Single-process, single-threaded, derived from warm mean
-latency. Not a distributed or multi-core claim.
+**Throughput — two figures, deliberately kept apart.**
+
+- *Latency-derived rate*: the reciprocal of warm mean latency. This is
+  arithmetic, not measurement — it assumes zero loop overhead and no drift.
+- *Observed sustained rate*: a continuous single-threaded loop over a fixed
+  wall-clock window (3 trials × 5 s, 1 s warmup each), counting completed
+  operations.
+
+Both are reported. Where they disagree, the observed figure is the real one.
+Neither is a concurrency or distribution claim — no such layer exists.
 
 **Scale curves.** Two dimensions the architecture can genuinely express:
 declared mediated actions (1/10/100/1000) and required facts (10/100/1000/10000).

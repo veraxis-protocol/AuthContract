@@ -1,7 +1,8 @@
 # AuthContract roadmap
 
-Derived from the AC-035 benchmark run at commit
-`e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`. Every item below cites the
+Derived from the AC-035 benchmark run measuring implementation
+`e4e1a97509df1a66c44b090c0a0ca0a03907f4dc` (DUT), with harness
+`a7f6ba374b1362e624a3f8b912b265dd03da4cdd`. Every item below cites the
 observed evidence that motivates it. Items with no supporting measurement are
 placed under **Research / not yet established** and are explicitly not
 commitments.
@@ -18,10 +19,10 @@ Analysis: [`docs/BENCHMARKS.md`](BENCHMARKS.md)
 
 | | |
 |---|---|
-| **Evidence** | Canonicalization costs ~96 µs mean (p50 88.6, p95 140.9) and is performed by validation, digest, and projection independently; `verify_receipt` then re-runs the entire decision path. Action check by contrast is 8.4 µs. Canonicalization dominates the ~761 µs end-to-end path. |
+| **Evidence** | Canonicalization costs ~91 µs mean (p50 83.9, p95 143.6) and is performed by validation, digest, and projection independently; `verify_receipt` then re-runs the entire decision path. Action check by contrast is 5.6 µs. Canonicalization dominates the ~633 µs end-to-end path. |
 | **Limitation** | The same contract body is canonicalized several times per transaction with no intra-transaction reuse. |
 | **Capability** | Canonicalize once per artifact per transaction and reuse the bytes across validation, digest, and projection. |
-| **Acceptance** | End-to-end p50 improves measurably against the 701.6 µs recorded baseline with **zero** change to any correctness or adversarial specimen result, and digests remain byte-identical to the recorded baseline. |
+| **Acceptance** | End-to-end p50 improves measurably against the 574.0 µs recorded baseline with **zero** change to any correctness or adversarial specimen result, and digests remain byte-identical to the recorded baseline. |
 | **Dependency** | None. |
 | **Maturity impact** | Removes the dominant cost without touching security semantics. |
 
@@ -51,7 +52,7 @@ Analysis: [`docs/BENCHMARKS.md`](BENCHMARKS.md)
 
 | | |
 |---|---|
-| **Evidence** | The suite runs in ~45 s and exits non-zero on any correctness failure; 342 existing tests pass alongside it. |
+| **Evidence** | The suite runs in ~100 s and exits non-zero on any correctness failure; 342 existing tests pass alongside it. |
 | **Limitation** | Benchmark results are a point-in-time artifact; nothing prevents silent regression of latency or of the 38-specimen adversarial matrix. |
 | **Capability** | Run the correctness and adversarial matrices in CI; track latency with a tolerance band rather than a hard threshold. |
 | **Acceptance** | CI fails on any adversarial regression; latency drift is reported without failing on noise. |
@@ -89,7 +90,7 @@ Analysis: [`docs/BENCHMARKS.md`](BENCHMARKS.md)
 
 | | |
 |---|---|
-| **Evidence** | Verification (446 µs mean) costs ~as much as the original decision (378 µs mean) because it recomputes every binding. |
+| **Evidence** | Verification (296 µs mean) costs ~as much as the original decision (283 µs mean) because it recomputes every binding. |
 | **Limitation** | A verifier-heavy workload costs the same as a decider-heavy one; that is a deliberate trade but is undocumented as a capacity-planning input. |
 | **Capability** | Either reduce redundant work inside `verify_receipt` (subject to N1) while preserving zero trust in receipt fields, or document the cost as an intentional property with guidance. |
 | **Acceptance** | Verification remains fully independent — no receipt field trusted — and either measurably improves or is documented with a capacity-planning note. |
@@ -129,12 +130,12 @@ Analysis: [`docs/BENCHMARKS.md`](BENCHMARKS.md)
 **Dependency:** X1.
 
 ### L2 — Interpreter startup amortization
-**Evidence:** startup ~80 ms vs ~0.38 ms per decision — a ~210× ratio. Any per-decision-process deployment is dominated by startup.
+**Evidence:** startup ~68 ms vs ~0.28 ms per decision — a ~240× ratio. Any per-decision-process deployment is dominated by startup.
 **Acceptance:** a long-lived service or batch shape whose measured per-decision cost approaches the in-process figure.
 **Dependency:** L1.
 
 ### L3 — Large-corpus operating envelope
-**Evidence:** 10,000 facts → ~0.57 s and ~13 MiB per decision, linear.
+**Evidence:** 10,000 facts → ~0.65 s and ~13 MiB per decision, linear.
 **Acceptance:** documented supported envelope with measured limits, plus explicit refusal or degradation beyond it.
 **Dependency:** N1, X1.
 
