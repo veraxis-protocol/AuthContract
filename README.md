@@ -209,9 +209,11 @@ if result.decision == "ALLOW":
 
 `run_specimen` returns a `RunResult` (`decision`, `reason_code`, `message`, `receipt`) and does **not** raise on an ordinary refusal — refusals are return values, not exceptions.
 
-### GitHub merge gate — available
+### GitHub merge-gate workflow — available
 
-`.github/workflows/authcontract-gate.yml` runs `authcontract git-gate` as a required status check. It re-resolves the base ref live and proves the evaluated commit really contains both the base and the PR head, so a stale or isolated-head result cannot pass.
+The repository includes `.github/workflows/authcontract-gate.yml`, which runs `authcontract git-gate` on pull requests. It re-resolves the base ref live and proves the evaluated commit really contains both the base and the PR head, so a stale or isolated-head result cannot pass the gate's own check.
+
+**The workflow's presence does not mean GitHub requires it.** Whether a check is *enforced* — that is, whether branch protection blocks a merge when it fails — is a separate GitHub repository-configuration concern, set in branch protection or rulesets rather than in the workflow file. Do not infer enforcement from the fact that this workflow exists; verify the repository's own branch-protection settings if you need to know what is actually required to merge.
 
 ### Runtime invocation and receipt verification — available
 
