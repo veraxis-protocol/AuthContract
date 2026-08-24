@@ -28,8 +28,11 @@ end to end for one bounded synthetic specimen — nothing broader.
 - Python 3.10 or 3.12 (this repository's CI tests both; 3.11 also works
   in practice but is not part of the tested matrix)
 - `pip`
-- Network access to `github.com` (no other network access, no secrets,
-  no credentials of any kind are required)
+- Network access sufficient to clone the GitHub repository and install
+  Python dependencies from the configured package index/download hosts.
+  If all required dependencies are already locally cached, no additional
+  dependency-download access is required. No secrets or credentials of
+  any kind are required.
 
 ---
 
@@ -106,9 +109,11 @@ json.dump(d['receipt'], open('/tmp/my_receipt.json', 'w'))
 Every field in `/tmp/my_receipt.json` (`activation_id`,
 `admission_digest`, `contract_digest`, `decision`, `decision_time`,
 `exact_action_digest`, `execution_result`, `projection_digest`,
-`receipt_digest`, `runtime_fact_set_digest`) is a content digest or a
-decision value bound to the specific artifact/action/facts inputs above —
-not a free-form log line. `contract_digest` and `projection_digest` do
+`receipt_digest`, `runtime_fact_set_digest`) is a bound receipt field.
+Their typed roles include digests, identifiers, decision/execution
+values, and declared time values — not free-form log lines. The verifier
+(step 8) independently recomputes and compares these bound values
+against the raw inputs. `contract_digest` and `projection_digest` do
 not change if you re-run this exact command (deterministic);
 `decision_time` is bound to the fact bundle's own declared `now`, not
 wall-clock time at invocation.
@@ -190,9 +195,9 @@ outside the repository's own test harness.
 - A clean, public clone of this exact commit installs and runs without
   any private setup, secret, or manual fix.
 - One PASS path and one REFUSED path both behave as documented.
-- The evidence receipt is independently recomputable from raw inputs by
-  a third party who trusts nothing but the public spec and the raw
-  artifact/action/fact files.
+- A third party running the public AuthContract verifier against the raw
+  artifact/action/fact files can recompute and compare the bound receipt
+  values.
 - Tampering a single bound field in the receipt is detected, not
   silently accepted.
 
