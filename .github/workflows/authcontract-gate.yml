@@ -13,13 +13,19 @@ name: AuthContract Gate
 on:
   pull_request:
 
+# Least privilege (AC-039). The gate reads the repository and adjudicates; it
+# writes nothing back to GitHub. The default token grant is deliberately not
+# relied on.
+permissions:
+  contents: read
+
 jobs:
   gate:
     name: AuthContract Gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR test-merge composition
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Default ref for a pull_request-triggered workflow is GitHub's
           # own ephemeral merge commit (refs/pull/<n>/merge, i.e.
@@ -32,12 +38,12 @@ jobs:
       - name: Fetch current base
         run: git fetch origin "${{ github.event.pull_request.base.ref }}"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
 
       - name: Install
-        run: pip install -e ".[test]"
+        run: pip install -e ".[test]" -c constraints.txt
 
       - name: Run AuthContract test suite against the merge composition
         id: tests

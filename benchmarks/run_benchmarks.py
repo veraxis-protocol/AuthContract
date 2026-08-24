@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from harness import (  # noqa: E402
     REPO_ROOT,
+    capture_dependency_identity,
     capture_environment,
     latency_derived_rate,
     load_fixture,
@@ -54,7 +55,16 @@ EXECUTION_RESULT = "SIMULATED_SUCCESS"
 # DUT_BASE_SHA identifies the product; the harness SHA is captured at runtime.
 # `verify_dut_unchanged` proves the harness commit modified nothing under
 # measurement, which is what makes the two safely comparable.
-DUT_BASE_SHA = "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc"
+# AC-039 rebound this to the commit that introduced the controlled dependency
+# set. The AC-035A results measured a DIFFERENT dependency environment; they are
+# preserved unchanged under their own AC-035 result identity and must not be
+# presented as measurements of this one.
+DUT_BASE_SHA = "389e9ff557f0c1f12996b7ebbc478689f38abdda"
+
+# Result-set identity. Results are written under this prefix so a new
+# measurement never overwrites the provenance of an earlier one.
+RESULT_SET_ID = "AC-039"
+WORK_ORDER = "AC-035 / AC-035A / AC-039"
 
 # Sustained-throughput measurement window.
 THROUGHPUT_TRIALS = 3
@@ -852,13 +862,14 @@ def main() -> int:
             "Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
         ),
         "dut_verification": verify_dut_unchanged(DUT_BASE_SHA),
+        "dependency_identity": capture_dependency_identity(),
     }
 
     if not provenance["dut_verification"]["verified"]:
         print("REFUSING TO RUN:", provenance["dut_verification"]["statement"], file=sys.stderr)
         return 2
 
-    print("AC-035 benchmark")
+    print(f"{RESULT_SET_ID} benchmark")
     print("  DUT      :", DUT_BASE_SHA[:12], "(verified unchanged)")
     print("  harness  :", environment["commit_sha"][:12])
     print("  phase: end-to-end + correctness matrix")
@@ -875,21 +886,21 @@ def main() -> int:
     resources = phase_resources()
 
     common = {
-        "work_order": "AC-035 / AC-035A",
+        "work_order": WORK_ORDER,
         "provenance": provenance,
         "environment": environment,
         "claim_ceiling": CLAIM_CEILING,
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
-    write_result("AC-035-E2E-RESULTS.json", {**common, "end_to_end": e2e})
-    write_result("AC-035-PERFORMANCE.json", {**common, "performance": performance, "scaling": scale})
+    write_result(f"{RESULT_SET_ID}-E2E-RESULTS.json", {**common, "end_to_end": e2e})
+    write_result(f"{RESULT_SET_ID}-PERFORMANCE.json", {**common, "performance": performance, "scaling": scale})
     write_result(
-        "AC-035-CORRECTNESS-MATRIX.json",
+        f"{RESULT_SET_ID}-CORRECTNESS-MATRIX.json",
         {**common, "end_to_end_matrix": e2e["specimens"], "adversarial_matrix": adversarial},
     )
-    write_result("AC-035-DETERMINISM.json", {**common, "determinism": determinism})
-    write_result("AC-035-RESOURCE-PROFILE.json", {**common, "resources": resources})
+    write_result(f"{RESULT_SET_ID}-DETERMINISM.json", {**common, "determinism": determinism})
+    write_result(f"{RESULT_SET_ID}-RESOURCE-PROFILE.json", {**common, "resources": resources})
 
     e2e_totals = e2e["totals"]
     adv_totals = adversarial["totals"]

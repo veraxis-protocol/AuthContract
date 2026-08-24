@@ -1,5 +1,12 @@
 # Release readiness record (AC-038)
 
+> **Updated by AC-039.** The Gate A–G results below were established at
+> `db1c745`. AC-039 then closed the CURRENT-SDLC v1.1 release-hardening
+> requirements — Security Completeness, Supply-Chain Integrity, API/Version
+> Integrity, Machine-Readable Licensing and Public Falsification. Those results,
+> and the revised disposition of findings U10–U13, are in the **AC-039
+> addendum** at the end of this document.
+
 Adjudication input for the CURRENT-SDLC public-release lifecycle. **This
 document records verification results. It does not certify release, and it does
 not declare the repository production-ready** — that adjudication is not the
@@ -175,3 +182,179 @@ regulatory or legal correctness, universal source-to-rule derivation,
 arbitrary-domain compatibility, security certification, distributed
 scalability, formal correctness, independent external validation, or comparative
 standing against any other system.
+
+
+---
+
+# AC-039 addendum — CURRENT-SDLC v1.1 release hardening
+
+Everything above stands as recorded. This addendum reports what AC-039 changed
+and re-verified. It records observations; it does not certify release.
+
+## Security completeness
+
+| Requirement | State |
+|---|---|
+| Maturity boundary stated | [`SECURITY.md`](../SECURITY.md) §1 — experimental reference implementation, TRL 4 |
+| Supported versions | §2 — **`main` only**. No tag, no release, no backport branch. |
+| Private reporting route | §3 — **NOT ESTABLISHED. Owner action required.** |
+| Triage policy | §4 — bounded Critical / High / Medium / Low handling, explicitly not an SLA |
+| "A scanner is not an audit" | §5 — stated explicitly, along with the absence of any independent security review |
+| Responsible disclosure | §6 |
+
+**On the private reporting route.** GitHub Private Vulnerability Reporting could
+not be confirmed as enabled: the repository metadata reachable from this
+project's tooling does not expose that setting, so its state is *unknown*, not
+*enabled*. No security contact address was invented — an address that does not
+demonstrably reach someone silently swallows reports, which is worse than an
+honest absence. The smallest sufficient owner action is named in `SECURITY.md`
+§3: enable Private Vulnerability Reporting, then replace that section with the
+resulting advisory link.
+
+## Supply-chain integrity
+
+| Control | Implementation |
+|---|---|
+| Dependency-advisory monitoring | [`.github/workflows/security.yml`](../.github/workflows/security.yml) — `pip-audit==2.10.1` against `constraints.txt`, on push, PR, and a weekly schedule |
+| Advisory gate strictness | **No severity threshold and no ignore list.** *Any* known advisory fails the job — stricter than the HIGH/CRITICAL floor required. |
+| Advisory *coverage* assertion | The job fails if any pin comes back unaudited (see finding U14) |
+| Dependency version updates | [`.github/dependabot.yml`](../.github/dependabot.yml) — `pip` and `github-actions`, weekly |
+| CI least privilege | Both workflows now declare `permissions: contents: read` explicitly |
+| Immutable action pinning | `actions/checkout@11d5960a…` (v4.4.0), `actions/setup-python@a26af69b…` (v5.6.0) |
+| Dependency identity | [`constraints.txt`](../constraints.txt); CI installs with `-c`; the benchmark records declared-vs-installed and reported `matches_declared_set: true` |
+
+**Not claimed:** hash-pinned or byte-for-byte reproducible installation. pip
+cannot combine `--require-hashes` with an editable install, which is this
+project's only supported install shape, so hash pinning is unavailable rather
+than merely omitted. That limitation is stated in `constraints.txt` itself.
+
+**Provider-side action still required:** Dependabot *security alerts* (as
+distinct from the version-update PRs `dependabot.yml` configures) are a
+repository setting the owner must enable under Settings → Advanced Security.
+The repository-controlled advisory gate in `security.yml` exists precisely so
+the requirement does not depend on that setting.
+
+## Vulnerability gate result
+
+`pip-audit -r constraints.txt --no-deps --strict` against the exact candidate
+dependency set: **0 known advisories across 8 pinned distributions.** No finding
+was suppressed, and no exception was self-authorized.
+
+## API / version integrity
+
+[`docs/VERSIONING.md`](VERSIONING.md) declares the public interface surface —
+six CLI commands, the two consumer flags, exit semantics, the Python entry
+points, the ten receipt fields, the reason codes, the fixture-defined file
+formats, and the workflow surface — and states plainly that everything else is
+internal.
+
+Key truthful reconciliations:
+
+- **`0.0.1` is a never-published placeholder** that has not been incremented as
+  the implementation changed. Two checkouts both reporting `0.0.1` may differ.
+  The commit SHA is the only reliable identity.
+- **Semantic Versioning is not claimed**, because it is not implemented.
+- **Pre-1.0 interfaces may change**, with no deprecation period and no backports.
+- The one commitment made: **reason codes will not change meaning silently under
+  the same version.** Scoped deliberately to *not silently* — not to *never*.
+
+## Machine-readable licensing
+
+`pyproject.toml` now declares the Trove classifier
+`License :: Other/Proprietary License`. That is the ecosystem-standard
+machine-readable way to state that this project is **not** open source, and it
+confers no rights — it describes the existing default-copyright state rather
+than creating a new one.
+
+No SPDX identifier was declared, because none would be true. A PEP 639
+`license = "LicenseRef-…"` expression was considered and rejected: it would
+require an accompanying license text file that only the owner can author.
+
+**BLOCKED-OWNER-DECISION.** The exact decision needed, and nothing more: *under
+what license, if any, is AuthContract offered to third parties?* Until that is
+answered, no license file can be added, downstream use remains legally
+impossible, and 1.0 remains unreachable. This is the single largest adoption
+barrier in the repository (finding U1).
+
+## Public falsification
+
+[`falsify.py`](../falsify.py) — one command, no credentials, no network:
+
+```bash
+python3 falsify.py
+```
+
+| Case | Expected | Observed |
+|---|---|---|
+| Valid specimen | `PASS` / `OK` / exit 0, receipt issued | **MATCH** |
+| Undeclared action | `REFUSED` / `RUN_UNCLASSIFIED_ACTION` / exit 1, no receipt | **MATCH** |
+| Stale runtime fact | `REFUSED` / `RUN_FACT_STALE` / exit 1, no receipt | **MATCH** |
+| Untampered receipt | `PASS` / `OK` / exit 0 | **MATCH** |
+| Tampered receipt binding | `REFUSED` / `VEIP_RECEIPT_MISMATCH` / exit 1 | **MATCH** |
+
+5 / 5 matched. A case fails on a mismatch **in either direction** — an
+unexpected pass fails exactly as loudly as an unexpected refusal, which is the
+half that matters for a system whose value rests on refusing correctly. The
+harness exits non-zero on any mismatch and runs in CI.
+
+## Release-artifact provenance applicability
+
+Re-evaluated against current state: still **no published package, no binary, no
+container, no installer, no generated SDK, and no GitHub Release artifact.**
+AC-039 introduced none.
+
+Artifact attestation, SBOM-for-distributed-artifact, and release-digest
+requirements therefore remain **NOT APPLICABLE** — there is no distributed
+artifact for provenance to attach to. No package or release was created merely
+to satisfy a clause that does not apply. If a distributable artifact is ever
+produced, applicability changes immediately and these requirements become
+mandatory.
+
+## Refreshed measurement
+
+Because the dependency environment materially changed, the AC-035A figures
+stopped being measurements of the current system. The full battery was re-run:
+[`docs/BENCHMARKS-AC-039.md`](BENCHMARKS-AC-039.md), raw results under
+`benchmarks/results/AC-039-*.json`. The AC-035A record is preserved unmodified
+in [`docs/BENCHMARKS.md`](BENCHMARKS.md) under a banner marking it superseded.
+
+DUT `389e9ff557f0c1f12996b7ebbc478689f38abdda`, `verified: true`,
+`matches_declared_set: true`. 7/7 E2E · 38/38 adversarial · 342 tests ·
+determinism stable · observed sustained end-to-end throughput median 1697.5
+ops/sec (min 1688.4, max 1710.8).
+
+## Revised finding dispositions
+
+| Finding | Disposition after AC-039 |
+|---|---|
+| **U1** — no licence declared | **OPEN — BLOCKED-OWNER-DECISION.** Machine-readable *state* now declared; the legal choice is not the executor's to make. |
+| **U5** — DUT guard covers `README.md` | **OPEN — still deliberately not worked around.** The guard fired as designed and the DUT was rebound to a new commit rather than the guard being loosened. |
+| **U8** — agent-usability record is self-authored | **OPEN — inherent.** `falsify.py` now lets a third party check the dispositions without trusting the record, which narrows but does not close it. |
+| **U9** — governance vocabulary in public docs | **OPEN — recorded.** Unchanged; rewording guard-pinned accepted text is a boundary decision, not an executor correction. |
+| **U10** — no `SECURITY.md` / `CONTRIBUTING.md` | **CLOSED.** Both added. Neither invents a channel, CLA, SLA, or governance model. |
+| **U11** — no explicit workflow `permissions:` | **CLOSED.** Both workflows declare `contents: read`. |
+| **U12** — actions pinned to mutable major tags | **CLOSED.** Both pinned to immutable commit SHAs with the version retained in a comment. |
+| **U13** — unpinned dependency floors | **CLOSED for identity, bounded on reproducibility.** `constraints.txt` fixes the closure and CI consumes it. Hash pinning remains unavailable for an editable install and is not claimed. |
+
+### New finding
+
+**U14 — the dependency auditor can silently skip a pin.** `pip-audit` drops a
+distribution whose exact version the advisory service has no record of, reports
+"No known vulnerabilities found", and exits **0** — even under `--strict`. This
+was found by checking the auditor's output against the input rather than
+trusting its exit code: `packaging==26.3` resolved and installed but was never
+audited.
+
+**Disposition: CLOSED, non-suppressively.** Two changes, neither of which
+weakens the gate:
+
+1. `security.yml` now asserts coverage — every pin in `constraints.txt` must
+   appear in the audit report, or the job fails. There is deliberately no
+   allowlist.
+2. `packaging` is held at `25.0`, which *is* covered by the advisory service.
+   `pytest` requires only `packaging>=22`, so this is a fully supported choice
+   and the stricter one.
+
+The general lesson is recorded rather than filed away: a green scanner that was
+never asked the question looks identical to a green scanner that asked and found
+nothing.

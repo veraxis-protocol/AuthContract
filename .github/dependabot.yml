@@ -1,0 +1,31 @@
+# Automated dependency-update monitoring (AC-039).
+#
+# Dependabot opens pull requests when a newer version of a pinned dependency or
+# a pinned action is published, so constraints.txt and the action SHAs cannot
+# quietly rot. Each PR runs the full CI matrix, the falsification harness, and
+# the dependency-advisory audit before it can be considered.
+#
+# NOTE ON PROVIDER STATE: version-update PRs come from this file alone.
+# Dependabot SECURITY alerts (and security-update PRs) are a separate repository
+# setting that cannot be enabled from a file in the repository — the owner must
+# turn on Dependabot alerts under Settings -> Advanced Security. That is why
+# .github/workflows/security.yml exists: the advisory gate it enforces is
+# repository-controlled and does not depend on that provider setting.
+
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
