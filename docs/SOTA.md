@@ -49,18 +49,18 @@ quadrantChart
     quadrant-2 "Strong grounding, limited runtime action enforcement"
     quadrant-3 "Supporting infra / partial components"
     quadrant-4 "Strong enforcement, operator-defined rules"
-    TNO FLINT / Catala: [0.15, 0.78]
+    TNO FLINT and Catala: [0.15, 0.78]
     OpenFisca: [0.20, 0.55]
     Obligation-First: [0.15, 0.68]
-    dekimuhq (receipt mechanic, off-axis): [0.30, 0.42]
-    in-toto / DSSE / Sigstore: [0.28, 0.20]
-    Conftest / GitHub checks: [0.35, 0.15]
-    OPA / Cedar / OpenFGA: [0.85, 0.10]
+    dekimuhq receipt mechanic: [0.30, 0.42]
+    in-toto DSSE Sigstore: [0.28, 0.20]
+    Conftest and GitHub checks: [0.35, 0.15]
+    OPA Cedar OpenFGA: [0.85, 0.10]
     decide.fyi: [0.80, 0.22]
-    Microsoft AGT (Public Preview): [0.75, 0.30]
-    Veridex / Permit0 / OpenEAGO: [0.70, 0.25]
-    AuthContract (current MVP-alpha): [0.55, 0.15]
-    AuthContract (target architecture): [0.92, 0.90]
+    Microsoft AGT Public Preview: [0.75, 0.30]
+    Veridex Permit0 OpenEAGO: [0.70, 0.25]
+    AuthContract current MVP alpha: [0.55, 0.15]
+    AuthContract target architecture: [0.92, 0.90]
 ```
 
 **Reading it:**
