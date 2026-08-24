@@ -1,13 +1,13 @@
-# Backbase clean-room runbook
+# Clean-room validation runbook
 
 **Baseline main SHA:** `639ada4ba5b2cbd73af9089320a6cd3abcfd2228`
 
 This runbook is written to be run literally, from a brand-new clone, by
-someone with no prior context on this project. Every command below was
-executed verbatim in a fresh disposable directory, fresh Python virtual
-environment, no reused local state, before this document was committed —
-see `AC-028-CLEANROOM-TRANSCRIPT.txt` in the AC-028 evidence package for
-the exact recorded run.
+an independent engineer with no prior context on this project. Every
+command below was executed verbatim in a fresh disposable directory,
+fresh Python virtual environment, no reused local state, before this
+document was committed — see the AC-028 clean-room evidence transcript
+for the exact recorded run.
 
 ---
 
@@ -207,8 +207,8 @@ outside the repository's own test harness.
 
 - Production readiness of AuthContract for any real deployment.
 - General regulatory, legal, or contractual correctness.
-- Compatibility with any specific CAGE (or other institutional)
-  enforcement rule or threshold — none has been integrated or tested.
+- Compatibility with any specific external enforcement rule or
+  threshold — none has been integrated or tested.
 - Broad automated natural-language source-to-rule semantic verification
   — not implemented; see `README.md`'s "Current status" and
   `docs/SOTA.md`'s current-vs-target boundary.
@@ -218,11 +218,11 @@ outside the repository's own test harness.
   architecture described in `docs/SOTA.md`.
 
 This exercise establishes only clean-clone external testability of the
-bounded MVP-alpha / Specimen 001 path, for this exact commit.
+bounded MVP-alpha / synthetic Specimen 001 path, for this exact commit.
 
 ---
 
-## 12. Replacing the synthetic specimen with a real CAGE rule
+## 12. Replacing the synthetic specimen with an external rule
 
 To evaluate a real enforcement rule or threshold instead of the synthetic
 banking specimen, at minimum:
@@ -230,20 +230,20 @@ banking specimen, at minimum:
 1. Author a new `.ac`-shaped JSON fixture (see
    `fixtures/banking_payment_specimen.json` for the shape: `contract`,
    `admission`, `activation`, `projection` domain, mediated-action
-   declarations) encoding the real rule's declared action(s), parameter
-   domain, and required runtime facts, instead of the synthetic payment
-   fields.
+   declarations) encoding the external rule's declared action(s),
+   parameter domain, and required runtime facts, instead of the
+   synthetic payment fields.
 2. Author corresponding action and fact fixtures (see
-   `fixtures/actions/` and `fixtures/runtime/`) representing the real
-   inputs to be evaluated against that rule.
+   `fixtures/actions/` and `fixtures/runtime/`) representing the
+   external inputs to be evaluated against that rule.
 3. Run the same `authcontract run-specimen` / `authcontract verify-receipt`
    commands above against the new fixtures in place of the synthetic
    ones.
 4. Do **not** assume this repository already supports arbitrary
    enforcement domains, jurisdictions, or institutional rule types beyond
    what is exercised in steps 1–3 above — every claim in this runbook is
-   bounded to what those specific fixtures exercise, not a general CAGE
-   integration. Any gap discovered while doing this (an unsupported value
-   type, an action shape the current projection domain rejects, etc.) is
-   a legitimate finding to report back, not something to work around by
-   modifying the fixture to avoid it.
+   bounded to what those specific fixtures exercise, not a general
+   external-rule integration. Any gap discovered while doing this (an
+   unsupported value type, an action shape the current projection
+   domain rejects, etc.) is a legitimate finding to report back, not
+   something to work around by modifying the fixture to avoid it.
