@@ -263,6 +263,30 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
+| Use AuthContract from an AI coding agent | [`AGENTS.md`](AGENTS.md) |
+
+---
+
+## Getting help, reporting problems, and commercial use
+
+| | |
+|---|---|
+| **Found a bug, or a claim that doesn't hold?** | Open a [GitHub issue](https://github.com/veraxis-protocol/AuthContract/issues). Reproduction steps against the committed fixtures are the most useful thing you can include. |
+| **Benchmark didn't reproduce?** | Include your OS, Python version, and the `benchmarks/results/` JSON your run produced — the harness records the DUT and harness SHAs it verified. |
+| **Commercial or institutional use** | [veraxis.io](https://veraxis.io) |
+
+**Contributions.** There is no contribution process established yet, and no
+contributor licence or review policy exists. Issues are the reliable path today.
+If you are considering a substantive contribution, open an issue first so it
+isn't wasted effort.
+
+**A note on scope of support.** This is an experimental reference implementation
+maintained as research and engineering evidence. There is no support commitment,
+response-time expectation, or maintenance guarantee attached to it.
+
+If the clean-room run above was useful to you, a GitHub star helps other
+engineers evaluating this space find it — entirely optional, and only if it
+actually earned one.
 
 ---
 ---
