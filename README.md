@@ -257,6 +257,7 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | Understand current maturity honestly | [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md) |
 | See what is planned and why | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | Validate a clean clone yourself | [`docs/CLEANROOM-VALIDATION-RUNBOOK.md`](docs/CLEANROOM-VALIDATION-RUNBOOK.md) |
+| See how this repository was usability-tested | [`docs/REPOSITORY-USABILITY.md`](docs/REPOSITORY-USABILITY.md) |
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
