@@ -34,7 +34,8 @@ pip install -e ".[test]"
 Confirm the install:
 
 ```bash
-pytest -q          # expect: 342 passed
+make test          # expect: 342 passed
+make falsify       # expect: 4/4 bounded outcomes observed
 ```
 
 > Not on PyPI. Install from source, as above.
@@ -264,6 +265,9 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | See how this repository was usability-tested | [`docs/REPOSITORY-USABILITY.md`](docs/REPOSITORY-USABILITY.md) |
 | See the release-readiness verification record | [`docs/RELEASE-READINESS.md`](docs/RELEASE-READINESS.md) |
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
+| Review dependency and SBOM policy | [`DEPENDENCIES.md`](DEPENDENCIES.md) |
+| Review security reporting | [`SECURITY.md`](SECURITY.md) |
+| Review compatibility policy | [`VERSIONING.md`](VERSIONING.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
 | Use AuthContract from an AI coding agent | [`AGENTS.md`](AGENTS.md) |
@@ -279,9 +283,9 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | **Commercial or institutional use** | [veraxis.io](https://veraxis.io) |
 
 **Contributions.** There is no contribution process established yet, and no
-contributor licence or review policy exists. Issues are the reliable path today.
-If you are considering a substantive contribution, open an issue first so it
-isn't wasted effort.
+contributor licence or acceptance promise. Issues remain the starting point;
+the exact branch, evidence, role-separation, and agent-provenance expectations
+are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 **A note on scope of support.** This is an experimental reference implementation
 maintained as research and engineering evidence. There is no support commitment,
