@@ -292,6 +292,9 @@ If asked to do something this repository does not support:
 5. Do **not** weaken or bypass a refusal to produce a desired outcome.
 
 Further reading: [`README.md`](README.md) · measured evidence
-[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · maturity
+[`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-AC-039.md) (current; `docs/BENCHMARKS.md` is
+the superseded earlier baseline) · versioning
+[`docs/VERSIONING.md`](docs/VERSIONING.md) · security
+[`SECURITY.md`](SECURITY.md) · maturity
 [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md) · planned work
 [`docs/ROADMAP.md`](docs/ROADMAP.md).

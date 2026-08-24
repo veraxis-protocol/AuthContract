@@ -271,7 +271,7 @@ Read this before forming expectations. The worked conceptual examples later in t
 - No concurrency, distribution, or measured multi-core scaling.
 - Evidence scope is one synthetic banking specimen family — not a general solution.
 
-Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · maturity assessment: [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md).
+Measured evidence and its limits: [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-AC-039.md) (current; [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) is the superseded earlier baseline) · maturity assessment: [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md).
 
 ---
 
@@ -287,7 +287,8 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 
 | If you want to… | Go to |
 |---|---|
-| See measured performance and correctness evidence | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) |
+| See measured performance and correctness evidence | [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-AC-039.md) |
+| See the earlier, superseded baseline | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) |
 | Reproduce the benchmarks yourself | [`benchmarks/README.md`](benchmarks/README.md) |
 | Understand current maturity honestly | [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md) |
 | See what is planned and why | [`docs/ROADMAP.md`](docs/ROADMAP.md) |

@@ -1,5 +1,15 @@
 # AuthContract benchmark baseline
 
+> **HISTORICAL RECORD — SUPERSEDED.** These figures were measured at
+> `e4e1a975` against an **uncontrolled** dependency environment, before AC-039
+> introduced `constraints.txt`. Because performance and correctness depend on
+> the dependency set as well as the code, they are **not** current measurements
+> and must not be presented as such. They are preserved here unmodified as
+> evidence of what was measured then.
+>
+> **Current measurement:**
+> [`docs/BENCHMARKS-AC-039.md`](BENCHMARKS-AC-039.md).
+
 **DUT_BASE_SHA (implementation measured):** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
 **Tree:** `9967077e7f9f9c661199c728c5a2e7fe496be07a`
 **BENCHMARK_HARNESS_SHA (harness that measured it):** `a7f6ba374b1362e624a3f8b912b265dd03da4cdd`

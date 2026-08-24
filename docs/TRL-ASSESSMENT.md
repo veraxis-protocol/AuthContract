@@ -1,8 +1,11 @@
 # AuthContract — TRL assessment (AC-035)
 
-**Implementation assessed (DUT):** `e4e1a97509df1a66c44b090c0a0ca0a03907f4dc`
-**Measured by harness:** `a7f6ba374b1362e624a3f8b912b265dd03da4cdd`
-**Basis:** the AC-035 benchmark run only, as amended by AC-035A. Architecture documents, design intent,
+**Implementation assessed (DUT):** `8e04e9c5e60f1e4cb604689419c0bb4c24ec903b`
+**Measured by harness:** `8e04e9c5e60f1e4cb604689419c0bb4c24ec903b`
+**Basis:** the AC-039 re-measurement, which re-ran the AC-035/AC-035A battery
+against a controlled dependency set. The earlier AC-035A figures measured a
+different dependency environment and are retained as history, not as current
+evidence. Architecture documents, design intent,
 and roadmap items are explicitly **not** counted as evidence.
 
 ---
@@ -104,7 +107,7 @@ unmodified (L4).
 ## Claim ceiling
 
 This assessment is bounded by the measurements in
-[`docs/BENCHMARKS.md`](BENCHMARKS.md). It does not establish production
+[`docs/BENCHMARKS-AC-039.md`](BENCHMARKS-AC-039.md). It does not establish production
 readiness, regulatory or legal correctness, universal source-to-rule
 derivation, arbitrary-domain compatibility, security certification, distributed
 scalability, formal correctness, or comparative standing against any other
