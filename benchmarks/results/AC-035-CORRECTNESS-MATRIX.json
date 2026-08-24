@@ -1,0 +1,709 @@
+{
+  "adversarial_matrix": {
+    "by_category": {
+      "action_outside_scope": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "admission_evidence_binding": {
+        "FAIL": 0,
+        "PASS": 2
+      },
+      "control": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "corroboration_missing": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "digest_mutation": {
+        "FAIL": 0,
+        "PASS": 2
+      },
+      "digest_scope_violation": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "evidence_mismatch": {
+        "FAIL": 0,
+        "PASS": 4
+      },
+      "inactive_contract": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "malformed_structured_input": {
+        "FAIL": 0,
+        "PASS": 4
+      },
+      "malformed_type": {
+        "FAIL": 0,
+        "PASS": 5
+      },
+      "missing_required_field": {
+        "FAIL": 0,
+        "PASS": 2
+      },
+      "out_of_domain_value": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "post_binding_mutation": {
+        "FAIL": 0,
+        "PASS": 2
+      },
+      "receipt_context_substitution": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "reordered_structured_input": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "replay": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "stale_fact": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "trust_basis_violation": {
+        "FAIL": 0,
+        "PASS": 1
+      },
+      "unknown_field_forbidden": {
+        "FAIL": 0,
+        "PASS": 5
+      },
+      "validly_bound_variant": {
+        "FAIL": 0,
+        "PASS": 1
+      }
+    },
+    "results": [
+      {
+        "category": "control",
+        "description": "Control: the valid specimen must still be ALLOWed",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": true,
+        "specimen": "ADV-00-control"
+      },
+      {
+        "category": "missing_required_field",
+        "description": "Missing required action parameter",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-01"
+      },
+      {
+        "category": "unknown_field_forbidden",
+        "description": "Unknown action parameter where unknown fields are forbidden",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-02"
+      },
+      {
+        "category": "out_of_domain_value",
+        "description": "Out-of-domain enum value",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-03"
+      },
+      {
+        "category": "malformed_type",
+        "description": "Lossy decimal representation in action parameter",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-04"
+      },
+      {
+        "category": "action_outside_scope",
+        "description": "Action type outside declared mediated scope",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_UNCLASSIFIED_ACTION",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-05"
+      },
+      {
+        "category": "missing_required_field",
+        "description": "Required fact absent from bundle",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_FACT_BUNDLE_INCOMPLETE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-06"
+      },
+      {
+        "category": "stale_fact",
+        "description": "Stale fact beyond freshness window",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_STALE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-07"
+      },
+      {
+        "category": "malformed_type",
+        "description": "Future-dated fact timestamp",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_FUTURE_TIMESTAMP",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-08"
+      },
+      {
+        "category": "malformed_type",
+        "description": "Timezone-naive fact timestamp (unverifiable ordering)",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_TIME_UNVERIFIABLE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-09"
+      },
+      {
+        "category": "trust_basis_violation",
+        "description": "Self-asserted fact where policy prohibits self-assertion",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_SELF_ASSERTED",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-10"
+      },
+      {
+        "category": "malformed_type",
+        "description": "Lossy wire representation of fact value",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_REPRESENTATION",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-11"
+      },
+      {
+        "category": "malformed_structured_input",
+        "description": "Duplicate fact_id in bundle",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-12"
+      },
+      {
+        "category": "unknown_field_forbidden",
+        "description": "Unknown field on fact object",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-13"
+      },
+      {
+        "category": "unknown_field_forbidden",
+        "description": "Unknown field on fact bundle",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-14"
+      },
+      {
+        "category": "unknown_field_forbidden",
+        "description": "Unknown field on verified-evidence object",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-15"
+      },
+      {
+        "category": "evidence_mismatch",
+        "description": "Claimed value diverges from verifier-established evidence value",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_EVIDENCE_MISMATCH",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-16"
+      },
+      {
+        "category": "evidence_mismatch",
+        "description": "Claimed asserter diverges from verifier-established asserter",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_EVIDENCE_MISMATCH",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-17"
+      },
+      {
+        "category": "evidence_mismatch",
+        "description": "Claimed fact_id diverges from verifier-established fact_id",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_IDENTITY_MISMATCH",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-18"
+      },
+      {
+        "category": "evidence_mismatch",
+        "description": "Stale verified evidence presented with a fresh caller claim",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_EVIDENCE_MISMATCH",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-19"
+      },
+      {
+        "category": "validly_bound_variant",
+        "description": "Variant contract, mutated AND correctly re-sealed (binding intact)",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": true,
+        "specimen": "ADV-20"
+      },
+      {
+        "category": "digest_mutation",
+        "description": "Sibling digest disagreement across bound locations",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-21"
+      },
+      {
+        "category": "digest_scope_violation",
+        "description": "Self-referential contract digest",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST_SCOPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-22"
+      },
+      {
+        "category": "digest_mutation",
+        "description": "Cross-object digest substitution",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-23"
+      },
+      {
+        "category": "malformed_type",
+        "description": "Malformed artifact",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-24"
+      },
+      {
+        "category": "inactive_contract",
+        "description": "Suspended contract (activation state not ACTIVE)",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_INACTIVE_CONTRACT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-25"
+      },
+      {
+        "category": "admission_evidence_binding",
+        "description": "Admission carrying approvals, contract binding intact",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": true,
+        "specimen": "ADV-26"
+      },
+      {
+        "category": "malformed_structured_input",
+        "description": "Admission present as JSON null",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-27"
+      },
+      {
+        "category": "malformed_structured_input",
+        "description": "Admission present as JSON list",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-28"
+      },
+      {
+        "category": "malformed_structured_input",
+        "description": "Duplicate required-fact declaration",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-29"
+      },
+      {
+        "category": "unknown_field_forbidden",
+        "description": "Unknown field on required-fact declaration",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-30"
+      },
+      {
+        "category": "corroboration_missing",
+        "description": "Corroboration required but not satisfiable as declared",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_MALFORMED_INPUT",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-31"
+      },
+      {
+        "category": "reordered_structured_input",
+        "description": "Reordered JSON object keys must not alter canonical identity or decision",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "digest invariant under key reordering: True",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": null,
+        "specimen": "ADV-32"
+      },
+      {
+        "category": "replay",
+        "description": "Replayed identical request",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "Replay yields an identical receipt. NOTE: this documents determinism, not replay *protection* \u2014 there is no nonce, sequence number, or single-use semantics at this commit, so an intercepted receipt is indistinguishable from a legitimately re-derived one. Recorded as an architectural gap.",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": null,
+        "specimen": "ADV-33"
+      },
+      {
+        "category": "receipt_context_substitution",
+        "description": "Receipt presented against a different action than it was issued for",
+        "expected_result": "REFUSE",
+        "failure_stage": "receipt_verification",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": true,
+        "receipt_verified": false,
+        "specimen": "ADV-34"
+      },
+      {
+        "category": "post_binding_mutation",
+        "description": "Contract version altered, digest binding left stale",
+        "expected_result": "REFUSE",
+        "failure_stage": "digest_binding",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-35"
+      },
+      {
+        "category": "post_binding_mutation",
+        "description": "Projection domain widened (amount retyped), digest binding left stale",
+        "expected_result": "REFUSE",
+        "failure_stage": "digest_binding",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "ADV-36"
+      },
+      {
+        "category": "admission_evidence_binding",
+        "description": "Forged admission approvals must alter the bound evidence",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "Decision is ALLOW because approvals are not an authorization gate at this commit (finding AC-035-F1). The evidence binding nonetheless holds: admission_digest and receipt_digest both change (True), and a receipt issued for the unforged admission does not verify against the forged one (VEIP_RECEIPT_MISMATCH).",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": false,
+        "specimen": "ADV-37"
+      }
+    ],
+    "totals": {
+      "failed": 0,
+      "not_evaluated": 0,
+      "passed": 38,
+      "total": 38
+    }
+  },
+  "claim_ceiling": [
+    "This benchmark measures a bounded MVP-alpha implementation on one synthetic banking specimen family.",
+    "It does NOT establish production readiness.",
+    "It does NOT establish regulatory or legal correctness.",
+    "It does NOT establish universal source-to-rule derivation.",
+    "It does NOT establish arbitrary-domain compatibility.",
+    "It does NOT establish security certification.",
+    "It does NOT establish distributed or concurrent scalability.",
+    "It does NOT constitute a formal proof.",
+    "It does NOT establish comparative superiority over any other system.",
+    "Latency and throughput figures are single-process, single-machine, and environment-specific."
+  ],
+  "end_to_end_matrix": [
+    {
+      "category": "happy_path",
+      "description": "Happy path: valid contract, valid facts, permitted action",
+      "expected_result": "ALLOW",
+      "failure_stage": null,
+      "notes": "",
+      "observed_result": "ALLOW",
+      "pass_fail": "PASS",
+      "reason_code": "OK",
+      "receipt_generated": true,
+      "receipt_verified": true,
+      "specimen": "E2E-01"
+    },
+    {
+      "category": "stale_fact",
+      "description": "Stale runtime fact: freshness window exceeded",
+      "expected_result": "REFUSE",
+      "failure_stage": "authorization_decision",
+      "notes": "",
+      "observed_result": "REFUSE",
+      "pass_fail": "PASS",
+      "reason_code": "RUN_FACT_STALE",
+      "receipt_generated": false,
+      "receipt_verified": null,
+      "specimen": "E2E-02"
+    },
+    {
+      "category": "malformed_contract",
+      "description": "Malformed contract artifact",
+      "expected_result": "REFUSE",
+      "failure_stage": "authorization_decision",
+      "notes": "",
+      "observed_result": "REFUSE",
+      "pass_fail": "PASS",
+      "reason_code": "RUN_DOMAIN_ESCAPE",
+      "receipt_generated": false,
+      "receipt_verified": null,
+      "specimen": "E2E-03"
+    },
+    {
+      "category": "unsupported_domain",
+      "description": "Action outside the declared projection domain",
+      "expected_result": "REFUSE",
+      "failure_stage": "authorization_decision",
+      "notes": "",
+      "observed_result": "REFUSE",
+      "pass_fail": "PASS",
+      "reason_code": "RUN_UNCLASSIFIED_ACTION",
+      "receipt_generated": false,
+      "receipt_verified": null,
+      "specimen": "E2E-04"
+    },
+    {
+      "category": "source_version_mutation",
+      "description": "Source/version material changed with stale (non-recomputed) digest binding",
+      "expected_result": "REFUSE",
+      "failure_stage": "digest_binding",
+      "notes": "contract.identity.version altered; activation/admission/proof digests left stale",
+      "observed_result": "REFUSE",
+      "pass_fail": "PASS",
+      "reason_code": "AC_DIGEST",
+      "receipt_generated": false,
+      "receipt_verified": null,
+      "specimen": "E2E-06"
+    },
+    {
+      "category": "receipt_mutation",
+      "description": "Receipt mutation and truncation across every protected field",
+      "expected_result": "REFUSE",
+      "failure_stage": "receipt_verification",
+      "notes": "20 mutation/truncation variants tested; 20 detected",
+      "observed_result": "REFUSE",
+      "pass_fail": "PASS",
+      "reason_code": "VEIP_RECEIPT_MISMATCH/MALFORMED",
+      "receipt_generated": true,
+      "receipt_verified": false,
+      "specimen": "E2E-05"
+    },
+    {
+      "category": "deterministic_replay",
+      "description": "Deterministic replay, 100 executions of the identical specimen",
+      "expected_result": "ALLOW",
+      "failure_stage": null,
+      "notes": "all protected receipt fields byte-identical across replays",
+      "observed_result": "ALLOW",
+      "pass_fail": "PASS",
+      "reason_code": "OK",
+      "receipt_generated": true,
+      "receipt_verified": true,
+      "specimen": "E2E-07"
+    }
+  ],
+  "environment": {
+    "commit_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "dependency_versions": {
+      "pytest": "9.1.1",
+      "rfc8785": "0.1.4"
+    },
+    "git_status_clean": false,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "tree_sha": "9967077e7f9f9c661199c728c5a2e7fe496be07a"
+  },
+  "generated_at_utc": "2026-08-24T13:12:02Z",
+  "work_order": "AC-035"
+}

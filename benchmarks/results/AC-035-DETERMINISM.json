@@ -1,0 +1,79 @@
+{
+  "claim_ceiling": [
+    "This benchmark measures a bounded MVP-alpha implementation on one synthetic banking specimen family.",
+    "It does NOT establish production readiness.",
+    "It does NOT establish regulatory or legal correctness.",
+    "It does NOT establish universal source-to-rule derivation.",
+    "It does NOT establish arbitrary-domain compatibility.",
+    "It does NOT establish security certification.",
+    "It does NOT establish distributed or concurrent scalability.",
+    "It does NOT constitute a formal proof.",
+    "It does NOT establish comparative superiority over any other system.",
+    "Latency and throughput figures are single-process, single-machine, and environment-specific."
+  ],
+  "determinism": {
+    "determinism_statement": "Every observed output is stable across repeated execution of a fixed specimen: decision, reason code, contract digest, projection, and all protected receipt fields including decision_time. decision_time is stable because it is bound to the fact bundle's own declared `now`, not to wall-clock time at invocation \u2014 so at this commit there is no intentionally-varying receipt field. This is determinism over fixed inputs in a single process; it is not a claim about cross-version, cross-platform, or cross-implementation reproducibility, none of which was tested.",
+    "fully_deterministic_over_fixed_inputs": true,
+    "primitives": {
+      "contract_digest_distinct_values": 1,
+      "contract_digest_stable": true,
+      "projection_distinct_values": 1,
+      "projection_stable": true
+    },
+    "refused_specimen": {
+      "decision_stable": true,
+      "decision_values_observed": [
+        "REFUSED"
+      ],
+      "executions": 100,
+      "reason_code_stable": true,
+      "reason_codes_observed": [
+        "RUN_FACT_STALE"
+      ],
+      "receipt_emitted": false,
+      "stable_receipt_fields": [],
+      "varying_receipt_fields": []
+    },
+    "valid_specimen": {
+      "decision_stable": true,
+      "decision_values_observed": [
+        "ALLOW"
+      ],
+      "executions": 100,
+      "reason_code_stable": true,
+      "reason_codes_observed": [
+        "OK"
+      ],
+      "receipt_emitted": true,
+      "stable_receipt_fields": [
+        "activation_id",
+        "admission_digest",
+        "contract_digest",
+        "decision",
+        "decision_time",
+        "exact_action_digest",
+        "execution_result",
+        "projection_digest",
+        "receipt_digest",
+        "runtime_fact_set_digest"
+      ],
+      "varying_receipt_fields": []
+    }
+  },
+  "environment": {
+    "commit_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "dependency_versions": {
+      "pytest": "9.1.1",
+      "rfc8785": "0.1.4"
+    },
+    "git_status_clean": false,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "tree_sha": "9967077e7f9f9c661199c728c5a2e7fe496be07a"
+  },
+  "generated_at_utc": "2026-08-24T13:12:02Z",
+  "work_order": "AC-035"
+}
