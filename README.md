@@ -8,7 +8,7 @@ AuthContract turns an institutional rule into a canonical, testable artifact —
 source → rule → PR → check → merge → runtime → proof
 ```
 
-> **Status: experimental reference implementation (TRL 4).** The mechanical trust chain below is implemented, tested, and benchmarked for one synthetic banking specimen. **Automated natural-language source-to-rule comparison is target behavior and is _not_ implemented end to end.** Nothing here is production-ready, audited, or certified. See [What is *not* implemented](#what-is-not-implemented) — read it before forming expectations.
+**Implementation status:** experimental reference implementation (TRL 4). The current code tests the mechanical trust chain for one synthetic banking specimen; the automated natural-language source-to-rule comparison shown in the examples below is target behavior and is not yet implemented end to end. Nothing here is production-ready, audited, or certified. See [What is *not* implemented](#what-is-not-implemented) — read it before forming expectations — and [Current status](#current-status) for the full boundary.
 
 ---
 
@@ -20,7 +20,7 @@ Ordinary tests ask *did the code run correctly?* AuthContract adds a second ques
 
 ---
 
-## Run it now
+## Quick start
 
 Requires **Python 3.10+** and `git`. No credentials, no services, no network beyond the clone and dependency install.
 
@@ -82,7 +82,9 @@ Exit code `0`. The action was permitted, and you now hold a receipt describing e
 
 ### Independently verify that receipt
 
-The receipt is only worth something if someone else can check it without trusting you. This recomputes **every** bound value from the raw artifact, action, and fact files — it trusts no field in the receipt itself:
+The receipt is only worth something if someone else can check it without trusting you. It trusts no field in the receipt itself.
+
+Re-run the evidence — independently recompute the receipt bindings from the raw artifact, action, and fact inputs and compare:
 
 ```bash
 authcontract verify-receipt \
@@ -182,7 +184,7 @@ authcontract project          Project a rule into its declared runtime action do
 authcontract check-action     Check an action against a rule's declared domain
 authcontract git-gate         Check a CI result against the version that would actually merge
 authcontract run-specimen     Run the rule/fact/action check end to end; issue a receipt on PASS
-authcontract verify-receipt   Recompute a receipt from source and compare
+authcontract verify-receipt   Re-run the evidence: recompute the receipt bindings and compare
 ```
 
 Structured JSON on stdout, non-zero exit on refusal — so shell and CI integration is straightforward.
