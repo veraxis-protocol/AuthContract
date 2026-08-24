@@ -1,25 +1,24 @@
-# SDLC v1.2 disposition
+# SDLC v1.2 producer status
 
 Baseline: `ce783851897b8ddbbe92fae2b098b8bee8e88f57`.
 
-This producer record reports literal repository evidence. It does not accept its
-own claims and is **NOT SELF-ADJUDICATED**. The governing `CURRENT-SDLC.md` v1.2
-text was not present in this repository at the baseline, so gate names are not
-reconstructed from memory; the IDs and evidence disposition are recorded
-without inventing missing normative text.
+This matrix uses the canonical public-release gate definitions in owner-authorized
+`CURRENT-SDLC.md` v1.2. It reports literal producer evidence, does not accept its own
+claims, and is **NOT SELF-ADJUDICATED**.
 
-| Gate | Disposition | Literal evidence / limitation |
-|---|---|---|
-| E | PASS | Clean source install and full test suite are exercised by `make test` and `make no-network`. |
-| F | PASS | `make falsify` checks valid PASS plus unclassified-action, stale-fact, and receipt-tamper refusals. |
-| G | PASS | `SECURITY.md` defines supported scope, private reporting, and bounded triage. |
-| H | PASS | Dependency review and vulnerability scanning are defined in `.github/workflows/security.yml`; `make sbom` generates a bounded SBOM. |
-| I | PASS | `VERSIONING.md` identifies provisional CLI, Python, reason-code, artifact, and receipt contracts. |
-| J | PASS | `README.md`, `AGENTS.md`, and `CONTRIBUTING.md` state the source-only, pre-1.0, no-license contribution boundary. |
-| K | N/A | No distributable release is authorized; no release attestation is claimed. |
-| L | NOT ESTABLISHED | Independent verification and adjudication have not occurred for this producer branch. |
-| M | PASS | `docs/AGENT-OBSERVABILITY.md` distinguishes GitHub attribution from dark local work, defines trailers, and documents the no-network check. Remote gateway/MCP surfaces remain not implemented. |
+| Gate | Canonical gate | Disposition | Literal evidence / limitation |
+|---|---|---|---|
+| E | Human Repository Usability | PASS | The README first screen states purpose and maturity and provides copy/paste clean-clone, install, meaningful valid/refusal CLI, expected output, integration, and boundary paths. `make ci` exercises the documented implementation. |
+| F | Agent Usability | PASS | `AGENTS.md` gives real install, verification, falsification, CLI, evidence-reading, and boundary instructions without inventing interfaces. |
+| G | Adoption Readiness | NOT ESTABLISHED | The README provides a truthful first-run and integration surface, but no adoption/conversion result is established; no star prompt or repository CTA is treated as adoption proof. |
+| H | Supply-Chain & Release Integrity | PASS | Consequential Actions are immutable-SHA pinned; PR dependency review, advisory scanning, and SBOM generation run in CI. No package/release artifact is published, so artifact digest, provenance, and attestation are not applicable to the current source-only state and are not claimed. |
+| I | Security & Vulnerability Management | PASS | `SECURITY.md` states supported scope, a private disclosure route, triage expectations, and scanner limits; dependency review and `pip-audit` are green on the exact PR head. A scanner result is not represented as an audit. |
+| J | API & Versioning Integrity | PASS | `VERSIONING.md` declares the pre-1.0 Python API/import, CLI, exit, reason-code, artifact, receipt, and compatibility surfaces. |
+| K | Machine-Readable Discovery & Licensing | NOT ESTABLISHED | `pyproject.toml` provides truthful package metadata, but the repository grants no license and declares no SPDX license identity. No grant is invented. |
+| L | Public Falsification Completeness | PASS | `make falsify` publicly exercises one valid decision and three meaningful refusal/tamper paths: unclassified action, stale fact, and receipt mismatch (4/4). |
+| M | Agent Interaction Observability | NOT ESTABLISHED | `docs/AGENT-OBSERVABILITY.md` truthfully documents GitHub-attributable versus dark local activity and the no-hidden-telemetry/no-network boundary. No approved ingestion pipeline, hosted gateway, or MCP observability implementation is established. |
 
-These dispositions must be checked against the authoritative `CURRENT-SDLC.md`
-v1.2 by an independent verifier before adjudication.
+## Independent Adjudication
 
+Independent Adjudication remains pending for the designated independent reviewer and owner.
+GitHub CI success is evidence, not acceptance. **CI GREEN IS NOT ACCEPTANCE.**
