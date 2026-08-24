@@ -32,6 +32,14 @@ strongest contribution doesn't project cleanly onto either axis (notably
 `dekimuhq/regulation-as-code` — see the note below the chart) are
 annotated rather than force-fit.
 
+**The numeric coordinates in the Mermaid source below are layout
+coordinates required by the chart renderer to place each label on the
+grid — they are not measured scores, rankings, percentages, or otherwise
+quantitatively comparable values.** Two systems at, say, x=0.70 and
+x=0.75 are not being claimed as 5% apart on any measured scale; the
+coordinates only encode which coarse band (see the quadrant labels) each
+system falls into.
+
 ```mermaid
 quadrantChart
     title Execution control vs. rule source traceability (approximate, corpus-bounded)
@@ -68,8 +76,9 @@ quadrantChart
   gates a live runtime action.
 - **Lower-right** — decide.fyi, Microsoft Agent Governance Toolkit,
   Veridex, Permit0, OpenEAGO, OPA/Cedar/OpenFGA: real deterministic
-  runtime enforcement, but the rule/policy content itself is
-  operator/developer-supplied, not traced to an authoritative source.
+  runtime enforcement. Their enforcement layers consume supplied
+  policy/rule content; authoritative-source traceability for that content
+  was not established in the inspected corpus.
 - **Lower-left** — in-toto, DSSE, Sigstore, Conftest, GitHub required
   checks: commodity/supporting infrastructure that several of the above
   (and AuthContract's own target) sit on top of, rather than replace.
@@ -174,8 +183,8 @@ to a Git merge result; no per-fact verifier-established-context binding.
 
 **Microsoft Agent Governance Toolkit** (Public Preview)
 Why care: deterministic pre-execution interception of agent tool calls
-against YAML/OPA/Cedar policy with a Merkle-chained audit log — the
-closest agent-governance runtime overlap found.
+against YAML/OPA/Cedar policy with a Merkle-chained audit log — a
+high-materiality agent-governance runtime overlap in this scan.
 Reuse: its `GovernanceDenied` record shape as a reference for explicit
 refusal reporting.
 Open seam: policy is user-supplied and only *mapped* to compliance
@@ -195,8 +204,8 @@ with citation/standing, and none was found gating a Git merge result the
 way AuthContract's `git-gate` re-resolves live base-ref ancestry.
 
 **OPA / Cedar / OpenFGA**
-Why care: production-grade downstream policy evaluation infrastructure;
-no reason to build a competing evaluator.
+Why care: downstream policy-evaluation infrastructure; no reason to
+build a competing evaluator.
 Reuse: directly, as the evaluation layer underneath a projection.
 Open seam: all three are explicitly downstream — they evaluate whatever
 policy is handed to them and establish nothing about where that policy
