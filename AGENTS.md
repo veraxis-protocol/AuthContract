@@ -150,9 +150,18 @@ Branch on the JSON `status` and `reason_code` fields rather than parsing prose.
 
 ## 10. Reason codes
 
-`reason_code` is a **stable machine-facing identifier**; `OK` on success.
-`message` (present on refusal) is human-readable and **not** a stable contract —
-do not parse it.
+`reason_code` is a **machine-facing identifier** in the current implementation;
+`OK` on success. Branch on it rather than on prose — within the currently
+documented and tested interface it is the intended programmatic signal.
+
+**Cross-version stability is not guaranteed.** This repository establishes no
+versioned public-interface commitment that reason codes remain unchanged across
+future releases; no such versioning or pinning mechanism exists yet. Treat the
+set below as accurate for this commit, and re-check it if you upgrade. Do not
+represent these codes as a stable API contract.
+
+`message` (present on refusal) is human-readable and **not** contractual at any
+version — do not parse it.
 
 Codes observed in the implementation, by family:
 

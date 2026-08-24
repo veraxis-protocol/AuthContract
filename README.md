@@ -156,7 +156,7 @@ Note that **no receipt is issued on refusal** — a refused decision never produ
 |---|---|
 | `status` | `PASS` or `REFUSED` — the outcome of the check |
 | `decision` | `ALLOW` on a permitted action; absent on refusal |
-| `reason_code` | Stable machine-facing identifier (e.g. `RUN_FACT_STALE`). Safe to branch on |
+| `reason_code` | Machine-facing identifier (e.g. `RUN_FACT_STALE`). Branch on this rather than on prose — but see the note below on cross-version stability |
 | `message` | Human-readable explanation of a refusal |
 | `contract_digest` | Canonical identity (RFC 8785 JCS + SHA-256) of the rule that applied |
 | `projection_digest` | Identity of the action domain the rule was projected into |
@@ -169,6 +169,8 @@ Note that **no receipt is issued on refusal** — a refused decision never produ
 Every digest is recomputable from raw inputs. That is what makes the receipt checkable by a third party rather than merely assertable by you.
 
 Exit codes: `0` pass · `1` refusal.
+
+**On `reason_code` stability.** Reason codes are the intended programmatic signal within the currently documented and tested interface, and are accurate for this commit. This repository does **not** yet establish a versioned public-interface commitment that they remain unchanged across future releases — no versioning or pinning mechanism exists. Re-check them if you upgrade, and do not treat them as a frozen API contract. `message` is human-readable and is not contractual at any version.
 
 ---
 
