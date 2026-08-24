@@ -2,54 +2,274 @@
 
 **Proof that the rule you shipped is actually supported by the source.**
 
-AuthContract is CI for the rules your agents act on.
-
-It checks whether a rule in your code is actually supported by its source, catches behavior changes in pull requests, and keeps the rule that passed connected to the actions your agent takes after you ship.
-
-If the source does not support the rule, the check fails.
-
-If the source is ambiguous or incomplete, AuthContract does not guess.
-
-If the rule passes, AuthContract preserves the evidence needed to show what source supported it, what behavior was tested, what version was shipped, and what rule governed a later action.
+AuthContract turns an institutional rule into a canonical, testable artifact — then keeps that artifact bound to the actions your software takes, and issues evidence anyone can independently recompute.
 
 ```text
 source → rule → PR → check → merge → runtime → proof
 ```
 
----
-
-## Why AuthContract?
-
-Agentic software is increasingly allowed to do consequential things:
-
-- send payments
-- approve transactions
-- change customer state
-- execute operational workflows
-- make decisions from regulated or contractual requirements
-- act on behalf of institutions
-
-Developers turn requirements into executable rules.
-
-That creates a simple problem:
-
-**How do you know the rule in the code actually says what the source says?**
-
-A rule can look reasonable, pass ordinary unit tests, and still introduce a threshold, exception, permission, or interpretation that the source never established.
-
-AuthContract makes that relationship testable.
-
-Instead of asking:
-
-> Did the code run correctly?
-
-AuthContract also asks:
-
-> Is the rule the code is running actually supported by the source?
+**Implementation status:** experimental reference implementation (TRL 4). The current code tests the mechanical trust chain for one synthetic banking specimen; the automated natural-language source-to-rule comparison shown in the examples below is target behavior and is not yet implemented end to end. Nothing here is production-ready, audited, or certified. See [What is *not* implemented](#what-is-not-implemented) — read it before forming expectations — and [Current status](#current-status) for the full boundary.
 
 ---
 
-**Implementation status:** experimental reference implementation. The current code tests the mechanical trust chain for one synthetic banking specimen; the automated natural-language source-to-rule comparison shown in the examples below is target behavior and is not yet implemented end to end. See [Current status](#current-status) for the full boundary.
+## The problem this addresses
+
+Software increasingly does consequential things on an institution's behalf: sends payments, approves transactions, changes customer state. Developers translate requirements into executable rules — and a rule can look reasonable, pass ordinary unit tests, and still introduce a threshold or exception the source never established.
+
+Ordinary tests ask *did the code run correctly?* AuthContract adds a second question: **which rule authorized this action, what version applied, and can anyone else verify that independently?**
+
+---
+
+## Quick start
+
+Requires **Python 3.10+** and `git`. No credentials, no services, no network beyond the clone and dependency install.
+
+```bash
+git clone https://github.com/veraxis-protocol/AuthContract.git
+cd AuthContract
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[test]"
+```
+
+Confirm the install:
+
+```bash
+pytest -q          # expect: 342 passed
+```
+
+> Not on PyPI. Install from source, as above.
+
+---
+
+## A successful end-to-end run
+
+This exercises the whole implemented chain — contract → validation and digest binding → projection → runtime facts → authorization → receipt:
+
+```bash
+authcontract run-specimen \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json \
+  fixtures/runtime/facts_valid.json \
+  --execution-result SIMULATED_SUCCESS
+```
+
+Actual output (reformatted for reading; the CLI emits one line of JSON):
+
+```json
+{
+  "status": "PASS",
+  "decision": "ALLOW",
+  "reason_code": "OK",
+  "artifact": "banking_payment_specimen.json",
+  "action_file": "send_payment_valid.json",
+  "facts_file": "facts_valid.json",
+  "receipt": {
+    "activation_id": "act:banking-specimen-001:v1",
+    "contract_digest": "sha256:d94a65607e756a2d4e3c92fc1de4a23d7cf614dd1dbe8f3fd20fe6e459c9b842",
+    "projection_digest": "sha256:c7f6dccb5f3f6b7c70b305e838ad87877805d19bd6d3e225f41a40151aa5659b",
+    "runtime_fact_set_digest": "sha256:57fe990d8320793f92894d31d16d55598e8f30cb63d227bd35e9b2bb3daaab09",
+    "exact_action_digest": "sha256:55bc4dd36b705f58a123c110bc4d5b398182524cb51c4fae499c2c1455d6470f",
+    "admission_digest": "sha256:1c631041f126de51afeeb5838d47501616083cd31d4ad0ca9691c71a74ec2a68",
+    "decision": "ALLOW",
+    "execution_result": "SIMULATED_SUCCESS",
+    "decision_time": "2026-08-23T00:10:00+00:00",
+    "receipt_digest": "sha256:2cfa754d40ed2b9df4a4be7dcc0082bbc1097e2b6a88cb73ea9f9af950bc5a9a"
+  }
+}
+```
+
+Exit code `0`. The action was permitted, and you now hold a receipt describing exactly what authorized it.
+
+### Independently verify that receipt
+
+The receipt is only worth something if someone else can check it without trusting you. It trusts no field in the receipt itself.
+
+Re-run the evidence — independently recompute the receipt bindings from the raw artifact, action, and fact inputs and compare:
+
+```bash
+authcontract verify-receipt \
+  fixtures/runtime/receipt_valid.json \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json \
+  fixtures/runtime/facts_valid.json
+```
+
+```json
+{"status": "PASS", "reason_code": "OK", "receipt": "receipt_valid.json",
+ "artifact": "banking_payment_specimen.json", "action_file": "send_payment_valid.json",
+ "facts_file": "facts_valid.json"}
+```
+
+Exit code `0`. Tamper with any bound field and this refuses — see below.
+
+---
+
+## A deliberate refusal
+
+**A refusal is a successful demonstration.** The system is designed to fail closed, and you should see it do so.
+
+### Refusal 1 — an action outside the declared rule
+
+The specimen declares exactly one mediated action, `send_payment`. Here we propose `issue_refund`:
+
+```bash
+authcontract run-specimen \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_unknown_action_type.json \
+  fixtures/runtime/facts_valid.json \
+  --execution-result SIMULATED_SUCCESS
+```
+
+```json
+{"status": "REFUSED", "reason_code": "RUN_UNCLASSIFIED_ACTION",
+ "message": "RUN_UNCLASSIFIED_ACTION: 'issue_refund' is not in the closed mediated-action universe for this projection"}
+```
+
+Exit code `1`. **In plain language:** the rule never granted authority to issue refunds, so AuthContract refuses rather than improvising. An undeclared action is not a permitted action.
+
+### Refusal 2 — a runtime fact too old to rely on
+
+The contract requires a secondary approval no older than 15 minutes. This bundle supplies a stale one:
+
+```bash
+authcontract run-specimen \
+  fixtures/banking_payment_specimen.json \
+  fixtures/actions/send_payment_valid.json \
+  fixtures/runtime/facts_stale.json \
+  --execution-result SIMULATED_SUCCESS
+```
+
+```json
+{"status": "REFUSED", "reason_code": "RUN_FACT_STALE",
+ "message": "RUN_FACT_STALE: secondary_approval.present is older than 0:15:00"}
+```
+
+Exit code `1`. **In plain language:** the approval existed, but not recently enough to satisfy the rule. Stale evidence is not treated as current permission.
+
+Note that **no receipt is issued on refusal** — a refused decision never produces evidence claiming a decision was made.
+
+---
+
+## What the result means
+
+| Field | Meaning |
+|---|---|
+| `status` | `PASS` or `REFUSED` — the outcome of the check |
+| `decision` | `ALLOW` on a permitted action; absent on refusal |
+| `reason_code` | Stable machine-facing identifier (e.g. `RUN_FACT_STALE`). Safe to branch on |
+| `message` | Human-readable explanation of a refusal |
+| `contract_digest` | Canonical identity (RFC 8785 JCS + SHA-256) of the rule that applied |
+| `projection_digest` | Identity of the action domain the rule was projected into |
+| `runtime_fact_set_digest` | Identity of the exact facts relied on |
+| `exact_action_digest` | Identity of the exact action authorized |
+| `admission_digest` | Identity of the admission state bound to the decision |
+| `decision_time` | Bound to the fact bundle's declared `now`, **not** wall-clock — so replays are byte-identical |
+| `receipt_digest` | Identity of the receipt as a whole |
+
+Every digest is recomputable from raw inputs. That is what makes the receipt checkable by a third party rather than merely assertable by you.
+
+Exit codes: `0` pass · `1` refusal.
+
+---
+
+## How to integrate it today
+
+Only interfaces that **actually exist** are listed. Each was executed while writing this section.
+
+### CLI — available
+
+```
+authcontract verify           Verify one rule artifact's canonical identity
+authcontract project          Project a rule into its declared runtime action domain
+authcontract check-action     Check an action against a rule's declared domain
+authcontract git-gate         Check a CI result against the version that would actually merge
+authcontract run-specimen     Run the rule/fact/action check end to end; issue a receipt on PASS
+authcontract verify-receipt   Re-run the evidence: recompute the receipt bindings and compare
+```
+
+Structured JSON on stdout, non-zero exit on refusal — so shell and CI integration is straightforward.
+
+### Python library — available
+
+```python
+import json
+from authcontract.veip import run_specimen, verify_receipt
+
+artifact = json.load(open("fixtures/banking_payment_specimen.json"))
+action   = json.load(open("fixtures/actions/send_payment_valid.json"))
+facts    = json.load(open("fixtures/runtime/facts_valid.json"))
+
+result = run_specimen(artifact, action, facts, execution_result="SIMULATED_SUCCESS")
+print(result.decision, result.reason_code)        # ALLOW OK
+
+if result.decision == "ALLOW":
+    check = verify_receipt(result.receipt, artifact, action, facts)
+    print(check.status, check.reason_code)        # PASS OK
+```
+
+`run_specimen` returns a `RunResult` (`decision`, `reason_code`, `message`, `receipt`) and does **not** raise on an ordinary refusal — refusals are return values, not exceptions.
+
+### GitHub merge-gate workflow — available
+
+The repository includes `.github/workflows/authcontract-gate.yml`, which runs `authcontract git-gate` on pull requests. It re-resolves the base ref live and proves the evaluated commit really contains both the base and the PR head, so a stale or isolated-head result cannot pass the gate's own check.
+
+**The workflow's presence does not mean GitHub requires it.** Whether a check is *enforced* — that is, whether branch protection blocks a merge when it fails — is a separate GitHub repository-configuration concern, set in branch protection or rulesets rather than in the workflow file. Do not infer enforcement from the fact that this workflow exists; verify the repository's own branch-protection settings if you need to know what is actually required to merge.
+
+### Runtime invocation and receipt verification — available
+
+`run-specimen` and `verify-receipt`, via CLI or library, as shown above.
+
+### Not available
+
+- **No published package.** Not on PyPI; install from source.
+- **No HTTP/gRPC service.** In-process library and CLI only.
+- **No persistence layer.** Stateless over in-memory inputs; receipts are not stored for you.
+- **No multi-contract registry.** One artifact is evaluated per invocation; there is no cross-contract selection.
+- **No replay protection.** Replayed identical requests produce identical receipts — this is determinism, not protection. No nonce or single-use semantics exist.
+
+---
+
+## What is *not* implemented
+
+Read this before forming expectations. The worked conceptual examples later in this document describe **target** behavior.
+
+- **Automated natural-language source-to-rule comparison is not implemented end to end.** This is the product's defining target capability and does not exist yet. Rules are authored as `.ac` artifacts today.
+- Not production-ready. Not audited. Not security-certified. Not regulatory-approved. No formal proof.
+- No universal policy correctness, general legal correctness, or arbitrary-domain compatibility.
+- No production-grade institutional identity or PKI.
+- No concurrency, distribution, or measured multi-core scaling.
+- Evidence scope is one synthetic banking specimen family — not a general solution.
+
+Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · maturity assessment: [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md).
+
+---
+
+## License
+
+**No license is currently declared.** This repository contains no `LICENSE` file and `pyproject.toml` declares no license field. Absent an explicit grant, default copyright applies and no usage rights are conferred — so treat this as source-available for evaluation and reading, not as open source. If you need licensed use, ask the repository owner.
+
+---
+
+## Where to go next
+
+| If you want to… | Go to |
+|---|---|
+| See measured performance and correctness evidence | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) |
+| Reproduce the benchmarks yourself | [`benchmarks/README.md`](benchmarks/README.md) |
+| Understand current maturity honestly | [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md) |
+| See what is planned and why | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
+| Validate a clean clone yourself | [`docs/CLEANROOM-VALIDATION-RUNBOOK.md`](docs/CLEANROOM-VALIDATION-RUNBOOK.md) |
+| See how this repository was usability-tested | [`docs/REPOSITORY-USABILITY.md`](docs/REPOSITORY-USABILITY.md) |
+| Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
+| See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
+| Understand the full conceptual model | keep reading below |
+
+---
+---
+
+# How it works — the full model
+
+Everything above is runnable today. Everything below explains the model the implementation is built toward, including worked examples of the **target** source-to-rule comparison that is not yet implemented end to end.
 
 ---
 
@@ -414,84 +634,6 @@ At a high level it carries things such as:
 The `.ac` artifact exists so that the meaning being reviewed does not disappear between a source document, a pull request, a runtime system, and later evidence.
 
 ---
-
-## Quick start
-
-Install the current reference implementation:
-
-```bash
-pip install -e ".[test]"
-```
-
-Run the test suite:
-
-```bash
-pytest -q
-```
-
-Verify an AuthContract fixture:
-
-```bash
-authcontract verify fixtures/valid.json
-```
-
-Project the banking specimen into its declared runtime domain:
-
-```bash
-authcontract project fixtures/banking_payment_specimen.json
-```
-
-Check an action:
-
-```bash
-authcontract check-action \
-  fixtures/banking_payment_specimen.json \
-  fixtures/actions/send_payment_valid.json
-```
-
-Run the check that ties a rule, its runtime facts, and an action together, and get a proof receipt back on PASS:
-
-```bash
-authcontract run-specimen \
-  fixtures/banking_payment_specimen.json \
-  fixtures/actions/send_payment_valid.json \
-  fixtures/runtime/facts_valid.json \
-  --execution-result SIMULATED_SUCCESS
-```
-
-Re-run the evidence — independently recompute the receipt bindings from the raw artifact, action, and fact inputs and compare:
-
-```bash
-authcontract verify-receipt \
-  fixtures/runtime/receipt_valid.json \
-  fixtures/banking_payment_specimen.json \
-  fixtures/actions/send_payment_valid.json \
-  fixtures/runtime/facts_valid.json
-```
-
-The CLI prints structured JSON and exits non-zero on refusal.
-
-Example:
-
-```json
-{
-  "status": "PASS",
-  "reason_code": "OK"
-}
-```
-
-or:
-
-```json
-{
-  "status": "REFUSED",
-  "reason_code": "RUN_UNCLASSIFIED_ACTION"
-}
-```
-
-Reason codes are stable machine-facing identifiers.
-
-The surrounding developer experience should explain what they mean in plain language.
 
 ---
 
