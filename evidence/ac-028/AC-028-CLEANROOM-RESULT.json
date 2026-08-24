@@ -1,0 +1,98 @@
+{
+  "work_order": "AC-028",
+  "baseline_main_sha": "639ada4ba5b2cbd73af9089320a6cd3abcfd2228",
+  "branch_head_sha": "46e8491224923ca48fe5fbfd4cee132b5875e037",
+  "environment": {
+    "os": "Linux vm 6.18.44-fc-v21 #1 SMP PREEMPT_DYNAMIC x86_64 GNU/Linux",
+    "python": "3.11.15",
+    "pip_before_upgrade": "24.0",
+    "pip_after_upgrade": "26.2.1",
+    "git": "2.43.0",
+    "installed_packages": {
+      "authcontract": "0.0.1 (editable, git+https://github.com/veraxis-protocol/AuthContract.git@639ada4ba5b2cbd73af9089320a6cd3abcfd2228)",
+      "iniconfig": "2.3.0",
+      "packaging": "26.3",
+      "pluggy": "1.6.0",
+      "Pygments": "2.21.0",
+      "pytest": "9.1.1",
+      "rfc8785": "0.1.4"
+    }
+  },
+  "clean_room_conditions": {
+    "clone_source": "https://github.com/veraxis-protocol/AuthContract.git (public, no symlink to existing working tree)",
+    "directory": "/tmp/ac028_cleanroom/AuthContract (fresh disposable directory)",
+    "venv": "fresh .venv created in the clean clone, not the AC-026/027 venv",
+    "secrets_used": "none",
+    "manual_fixes_applied": "none (one runbook drafting defect was found and fixed in the runbook document itself before commit, not worked around in the clean-room run)"
+  },
+  "test_suite_result": {
+    "command": "pytest -q",
+    "result": "342 passed",
+    "exit_code": 0
+  },
+  "happy_path_result": {
+    "command": "authcontract run-specimen fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json fixtures/runtime/facts_valid.json --execution-result SIMULATED_SUCCESS",
+    "status": "PASS",
+    "decision": "ALLOW",
+    "reason_code": "OK",
+    "exit_code": 0
+  },
+  "refusal_path_result": {
+    "command": "authcontract run-specimen fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json fixtures/runtime/facts_stale.json --execution-result SIMULATED_SUCCESS",
+    "status": "REFUSED",
+    "reason_code": "RUN_FACT_STALE",
+    "message": "RUN_FACT_STALE: secondary_approval.present is older than 0:15:00",
+    "exit_code": 1
+  },
+  "receipt_verification_result": {
+    "command": "authcontract verify-receipt <extracted receipt object> fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json fixtures/runtime/facts_valid.json",
+    "status": "PASS",
+    "reason_code": "OK",
+    "exit_code": 0
+  },
+  "mutation_verification_result": {
+    "command": "authcontract verify-receipt <receipt with decision tampered ALLOW->DENY> fixtures/banking_payment_specimen.json fixtures/actions/send_payment_valid.json fixtures/runtime/facts_valid.json",
+    "status": "REFUSED",
+    "reason_code": "VEIP_RECEIPT_MISMATCH",
+    "message": "field 'decision' does not match the independently recomputed value",
+    "exit_code": 1
+  },
+  "runbook_defect_found_and_fixed": {
+    "description": "First draft of docs/BACKBASE-RUNBOOK.md step 6 piped run-specimen's full JSON wrapper directly to a file and used that file as verify-receipt's receipt argument. verify-receipt rejects the wrapper (VEIP_RECEIPT_MALFORMED: missing required fields) because it expects only the nested 'receipt' object. Fixed by adding a python3 extraction step before verify-receipt. Corrected runbook committed; this clean-room run itself used the corrected extract-then-verify sequence.",
+    "affected_step": "Runbook section 6 and 8"
+  },
+  "pull_request": {
+    "number": 3,
+    "url": "https://github.com/veraxis-protocol/AuthContract/pull/3",
+    "base": "main",
+    "head_branch": "claude/ac-028-backbase-cleanroom-kit",
+    "head_sha_at_clean_room_execution": "46e8491224923ca48fe5fbfd4cee132b5875e037",
+    "merged": false
+  },
+  "ac_028a_amendment": {
+    "description": "AC-028A repaired three docs/BACKBASE-RUNBOOK.md prose accuracy defects (network-access wording, receipt field type wording, third-party verification wording). No executable command changed; clean-room transcript above (captured at head 46e8491...) preserved unmodified and not re-run, per instruction, since no command changed.",
+    "amended_head_sha": "647e115affd228f3ae90de7ad6ac6e19f10e46b8",
+    "files_changed": ["docs/BACKBASE-RUNBOOK.md"]
+  },
+  "authcontract_gate": {
+    "run_id": 32685543411,
+    "job_id": 97309830032,
+    "conclusion": "SUCCESS",
+    "head_sha": "647e115affd228f3ae90de7ad6ac6e19f10e46b8",
+    "completed_at": "2026-08-24T03:10:56Z"
+  },
+  "ci": {
+    "run_id": 32685543421,
+    "conclusion": "SUCCESS (all jobs)",
+    "head_sha": "647e115affd228f3ae90de7ad6ac6e19f10e46b8"
+  },
+  "python_3_10_conclusion": "SUCCESS (job 97309829975, run 32685543421, completed 2026-08-24T03:10:56Z)",
+  "python_3_12_conclusion": "SUCCESS (job 97309829929, run 32685543421, completed 2026-08-24T03:10:56Z)",
+  "transcript_file": {
+    "name": "AC-028-CLEANROOM-TRANSCRIPT.txt",
+    "bytes": 9842,
+    "lines": 130,
+    "sha256": "2ea856045b88813f54058d272e7580cfdfa7cc56a8f088788efe106289d63164"
+  },
+  "drive_deposit_status": "PENDING - Google Drive connector unavailable at time of this work order's execution; evidence preserved locally with hashes, GitHub work continued per instruction"
+}
