@@ -1,0 +1,521 @@
+{
+  "claim_ceiling": [
+    "This benchmark measures a bounded MVP-alpha implementation on one synthetic banking specimen family.",
+    "It does NOT establish production readiness.",
+    "It does NOT establish regulatory or legal correctness.",
+    "It does NOT establish universal source-to-rule derivation.",
+    "It does NOT establish arbitrary-domain compatibility.",
+    "It does NOT establish security certification.",
+    "It does NOT establish distributed or concurrent scalability.",
+    "It does NOT constitute a formal proof.",
+    "It does NOT establish comparative superiority over any other system.",
+    "Latency and throughput figures are single-process, single-machine, and environment-specific."
+  ],
+  "environment": {
+    "commit_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
+    "dependency_versions": {
+      "pytest": "9.1.1",
+      "rfc8785": "0.1.4"
+    },
+    "git_status_clean": false,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "tree_sha": "61375c762b1e9b9e9e602adf7921df7da17d9456"
+  },
+  "generated_at_utc": "2026-08-24T13:43:12Z",
+  "performance": {
+    "cold_vs_warm": {
+      "complete_end_to_end_cold": {
+        "single_cold_execution": 598.022,
+        "unit": "microseconds"
+      },
+      "note": "Single un-warmed execution in an already-imported interpreter. The dominant one-time cost is interpreter startup and module import, reported separately in the resource profile."
+    },
+    "latency_derived_rate": {
+      "caveat": "This is arithmetic, not measurement: it assumes zero loop overhead and no drift under continuous operation. Compare against observed_sustained_throughput below; where they disagree, the observed figure is the real one.",
+      "complete_e2e_transactions_per_second": 1579.6,
+      "decisions_per_second": 3532.7,
+      "method": "LATENCY-DERIVED RATE \u2014 reciprocal of warm mean latency, NOT an observed rate",
+      "receipt_verifications_per_second": 3382.0,
+      "receipts_per_second": 3532.7,
+      "receipts_per_second_caveat": "Receipt emission is not separately callable at this commit: run_specimen decides and emits in one pass, so decisions/sec and receipts/sec are the same measurement reported twice, not two independent figures."
+    },
+    "observed_sustained_throughput": {
+      "complete_end_to_end": {
+        "max_ops_per_second": 1587.5,
+        "measurement_seconds_per_trial": 5.0,
+        "median_ops_per_second": 1574.4,
+        "method": "observed sustained rate \u2014 continuous single-threaded loop over a fixed window",
+        "min_ops_per_second": 1512.9,
+        "total_operations": 23375,
+        "trial_detail": [
+          {
+            "elapsed_seconds": 5.0003,
+            "operations": 7565,
+            "operations_per_second": 1512.9,
+            "trial": 1
+          },
+          {
+            "elapsed_seconds": 5.0002,
+            "operations": 7938,
+            "operations_per_second": 1587.5,
+            "trial": 2
+          },
+          {
+            "elapsed_seconds": 5.0001,
+            "operations": 7872,
+            "operations_per_second": 1574.4,
+            "trial": 3
+          }
+        ],
+        "trials": 3,
+        "warmup_seconds": 1.0
+      },
+      "decision_and_receipt": {
+        "max_ops_per_second": 3423.9,
+        "measurement_seconds_per_trial": 5.0,
+        "median_ops_per_second": 3383.8,
+        "method": "observed sustained rate \u2014 continuous single-threaded loop over a fixed window",
+        "min_ops_per_second": 3258.9,
+        "total_operations": 50335,
+        "trial_detail": [
+          {
+            "elapsed_seconds": 5.0004,
+            "operations": 17121,
+            "operations_per_second": 3423.9,
+            "trial": 1
+          },
+          {
+            "elapsed_seconds": 5.0,
+            "operations": 16919,
+            "operations_per_second": 3383.8,
+            "trial": 2
+          },
+          {
+            "elapsed_seconds": 5.0002,
+            "operations": 16295,
+            "operations_per_second": 3258.9,
+            "trial": 3
+          }
+        ],
+        "trials": 3,
+        "warmup_seconds": 1.0
+      },
+      "note": "Observed sustained rates: continuous single-process, single-threaded loops over fixed wall-clock windows. No concurrency. Not a distributed or multi-core claim.",
+      "receipt_verification": {
+        "max_ops_per_second": 3237.4,
+        "measurement_seconds_per_trial": 5.0,
+        "median_ops_per_second": 3212.9,
+        "method": "observed sustained rate \u2014 continuous single-threaded loop over a fixed window",
+        "min_ops_per_second": 3178.2,
+        "total_operations": 48145,
+        "trial_detail": [
+          {
+            "elapsed_seconds": 5.0004,
+            "operations": 16066,
+            "operations_per_second": 3212.9,
+            "trial": 1
+          },
+          {
+            "elapsed_seconds": 5.0003,
+            "operations": 15892,
+            "operations_per_second": 3178.2,
+            "trial": 2
+          },
+          {
+            "elapsed_seconds": 5.0001,
+            "operations": 16187,
+            "operations_per_second": 3237.4,
+            "trial": 3
+          }
+        ],
+        "trials": 3,
+        "warmup_seconds": 1.0
+      }
+    },
+    "stages": {
+      "action_check": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 18.275,
+          "mean": 5.633,
+          "min": 4.914,
+          "n": 2000,
+          "p50": 5.049,
+          "p95": 8.507,
+          "p99": 10.81,
+          "stdev": 1.362,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "check_action: validate a proposed action against the projection"
+      },
+      "canonical_digest": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 226.511,
+          "mean": 88.619,
+          "min": 78.961,
+          "n": 2000,
+          "p50": 85.554,
+          "p95": 107.888,
+          "p99": 146.427,
+          "stdev": 11.555,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "contract_digest: JCS canonicalization plus SHA-256"
+      },
+      "canonicalization": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 428.039,
+          "mean": 90.825,
+          "min": 75.79,
+          "n": 2000,
+          "p50": 83.872,
+          "p95": 143.6,
+          "p99": 155.003,
+          "stdev": 19.863,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "canonical_bytes: RFC 8785 JCS serialization of the contract"
+      },
+      "complete_end_to_end": {
+        "summary": {
+          "inner_batch": 1,
+          "max": 1438.889,
+          "mean": 633.078,
+          "min": 520.309,
+          "n": 1000,
+          "p50": 574.002,
+          "p95": 1052.539,
+          "p99": 1111.175,
+          "stdev": 154.163,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "parse \u2192 decide \u2192 emit receipt \u2192 independently verify receipt"
+      },
+      "contract_parse": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 2091.211,
+          "mean": 10.92,
+          "min": 8.822,
+          "n": 2000,
+          "p50": 9.148,
+          "p95": 12.668,
+          "p99": 17.553,
+          "stdev": 46.568,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "json.loads of the raw contract artifact text"
+      },
+      "decision_and_receipt": {
+        "summary": {
+          "inner_batch": 1,
+          "max": 576.538,
+          "mean": 283.067,
+          "min": 247.537,
+          "n": 1000,
+          "p50": 264.921,
+          "p95": 365.349,
+          "p99": 492.532,
+          "stdev": 46.925,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "run_specimen: full orchestration \u2014 parse bundle, project, admit facts, decide, and emit the receipt. Supersets projection and action_check."
+      },
+      "projection": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 780.841,
+          "mean": 105.502,
+          "min": 89.451,
+          "n": 2000,
+          "p50": 99.535,
+          "p95": 141.815,
+          "p99": 184.272,
+          "stdev": 26.567,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "project: build the deterministic action-domain projection"
+      },
+      "projection_digest": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 388.926,
+          "mean": 45.351,
+          "min": 40.102,
+          "n": 2000,
+          "p50": 42.922,
+          "p95": 60.748,
+          "p99": 77.546,
+          "stdev": 10.701,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "projection_digest over the realized projection"
+      },
+      "receipt_verification": {
+        "summary": {
+          "inner_batch": 1,
+          "max": 679.022,
+          "mean": 295.685,
+          "min": 252.573,
+          "n": 1000,
+          "p50": 279.364,
+          "p95": 382.414,
+          "p99": 491.106,
+          "stdev": 49.273,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "verify_receipt: independently recompute every binding from raw inputs and compare. Internally re-runs the full decision path."
+      },
+      "validation_and_binding": {
+        "summary": {
+          "inner_batch": 20,
+          "max": 2054.891,
+          "mean": 94.558,
+          "min": 79.758,
+          "n": 2000,
+          "p50": 86.937,
+          "p95": 123.164,
+          "p99": 157.781,
+          "stdev": 63.977,
+          "unit": "microseconds",
+          "warmup_discarded": 50
+        },
+        "what": "verify_artifact: digest-scope validation plus sibling binding agreement"
+      }
+    }
+  },
+  "provenance": {
+    "benchmark_harness_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
+    "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "dut_verification": {
+      "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+      "dut_paths": [
+        "authcontract",
+        "tests",
+        "fixtures",
+        ".github",
+        "pyproject.toml",
+        "README.md",
+        "docs/SOTA.md",
+        "docs/SOTA-EVIDENCE.md",
+        "docs/DEVELOPER-LANGUAGE.md",
+        "docs/CLEANROOM-VALIDATION-RUNBOOK.md"
+      ],
+      "modified_dut_files": [],
+      "statement": "All device-under-test paths are byte-identical to e4e1a97509df1a66c44b090c0a0ca0a03907f4dc; the benchmark harness changed nothing under measurement.",
+      "verified": true
+    },
+    "note": "DUT_BASE_SHA is the AuthContract implementation being measured. BENCHMARK_HARNESS_SHA is the commit containing the harness that measured it \u2014 necessarily a later commit, since the harness did not exist at DUT_BASE_SHA. Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
+  },
+  "scaling": {
+    "declared_action_scaling": {
+      "dimension": "count of declared mediated actions in the projection domain",
+      "levels": [
+        {
+          "decision": "ALLOW",
+          "declared_actions": 1,
+          "latency": {
+            "inner_batch": 1,
+            "max": 556.088,
+            "mean": 279.782,
+            "min": 244.412,
+            "n": 400,
+            "p50": 265.108,
+            "p95": 353.737,
+            "p99": 455.387,
+            "stdev": 41.235,
+            "unit": "microseconds",
+            "warmup_discarded": 10
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 6214,
+            "peak_traced_kib": 6.07
+          },
+          "reason_code": "OK"
+        },
+        {
+          "decision": "ALLOW",
+          "declared_actions": 10,
+          "latency": {
+            "inner_batch": 1,
+            "max": 1662.417,
+            "mean": 1008.521,
+            "min": 855.607,
+            "n": 400,
+            "p50": 967.498,
+            "p95": 1303.346,
+            "p99": 1589.686,
+            "stdev": 140.887,
+            "unit": "microseconds",
+            "warmup_discarded": 10
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 9621,
+            "peak_traced_kib": 9.4
+          },
+          "reason_code": "OK"
+        },
+        {
+          "decision": "ALLOW",
+          "declared_actions": 100,
+          "latency": {
+            "inner_batch": 1,
+            "max": 13444.785,
+            "mean": 8126.808,
+            "min": 7167.499,
+            "n": 400,
+            "p50": 7811.029,
+            "p95": 10430.793,
+            "p99": 12830.666,
+            "stdev": 1045.757,
+            "unit": "microseconds",
+            "warmup_discarded": 10
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 41774,
+            "peak_traced_kib": 40.79
+          },
+          "reason_code": "OK"
+        },
+        {
+          "decision": "ALLOW",
+          "declared_actions": 1000,
+          "latency": {
+            "inner_batch": 1,
+            "max": 116275.614,
+            "mean": 78031.881,
+            "min": 71024.273,
+            "n": 60,
+            "p50": 76607.789,
+            "p95": 87792.025,
+            "p99": 116275.614,
+            "stdev": 6752.494,
+            "unit": "microseconds",
+            "warmup_discarded": 10
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 374877,
+            "peak_traced_kib": 366.09
+          },
+          "reason_code": "OK"
+        }
+      ],
+      "observed_shape": "approximately linear (size x1000 -> time x278.9)"
+    },
+    "not_evaluated": {
+      "concurrent_or_distributed_throughput": "NOT EVALUATED \u2014 no concurrency or distribution layer exists at this commit.",
+      "multi_contract_corpora": "NOT EVALUATED \u2014 the implementation evaluates one artifact per invocation; there is no multi-contract registry or cross-contract selection path at this commit whose scaling could be measured without inventing architecture.",
+      "persistent_storage_scaling": "NOT EVALUATED \u2014 the runtime is stateless over in-memory inputs; there is no storage backend to scale."
+    },
+    "required_fact_scaling": {
+      "dimension": "count of required facts (contract) matched by supplied facts (bundle)",
+      "levels": [
+        {
+          "decision": "ALLOW",
+          "latency": {
+            "inner_batch": 1,
+            "max": 4685.441,
+            "mean": 953.728,
+            "min": 717.66,
+            "n": 200,
+            "p50": 913.82,
+            "p95": 1215.565,
+            "p99": 1396.101,
+            "stdev": 293.21,
+            "unit": "microseconds",
+            "warmup_discarded": 3
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 16204,
+            "peak_traced_kib": 15.82
+          },
+          "reason_code": "OK",
+          "required_facts": 10
+        },
+        {
+          "decision": "ALLOW",
+          "latency": {
+            "inner_batch": 1,
+            "max": 9229.832,
+            "mean": 6978.442,
+            "min": 5406.586,
+            "n": 200,
+            "p50": 6916.054,
+            "p95": 8445.045,
+            "p99": 9076.396,
+            "stdev": 725.641,
+            "unit": "microseconds",
+            "warmup_discarded": 3
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 144093,
+            "peak_traced_kib": 140.72
+          },
+          "reason_code": "OK",
+          "required_facts": 100
+        },
+        {
+          "decision": "ALLOW",
+          "latency": {
+            "inner_batch": 1,
+            "max": 83138.987,
+            "mean": 68148.353,
+            "min": 63971.47,
+            "n": 40,
+            "p50": 67261.842,
+            "p95": 74742.939,
+            "p99": 83138.987,
+            "stdev": 3699.0,
+            "unit": "microseconds",
+            "warmup_discarded": 3
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 1363979,
+            "peak_traced_kib": 1332.01
+          },
+          "reason_code": "OK",
+          "required_facts": 1000
+        },
+        {
+          "decision": "ALLOW",
+          "latency": {
+            "inner_batch": 1,
+            "max": 671062.884,
+            "mean": 648173.111,
+            "min": 597079.984,
+            "n": 5,
+            "p50": 657265.367,
+            "p95": 671062.884,
+            "p99": 671062.884,
+            "stdev": 29974.09,
+            "unit": "microseconds",
+            "warmup_discarded": 3
+          },
+          "peak_traced_memory": {
+            "peak_traced_bytes": 13788824,
+            "peak_traced_kib": 13465.65
+          },
+          "reason_code": "OK",
+          "required_facts": 10000
+        }
+      ],
+      "observed_shape": "approximately linear (size x1000 -> time x679.6)"
+    }
+  },
+  "work_order": "AC-035 / AC-035A"
+}

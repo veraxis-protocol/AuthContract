@@ -1,0 +1,255 @@
+{
+  "claim_ceiling": [
+    "This benchmark measures a bounded MVP-alpha implementation on one synthetic banking specimen family.",
+    "It does NOT establish production readiness.",
+    "It does NOT establish regulatory or legal correctness.",
+    "It does NOT establish universal source-to-rule derivation.",
+    "It does NOT establish arbitrary-domain compatibility.",
+    "It does NOT establish security certification.",
+    "It does NOT establish distributed or concurrent scalability.",
+    "It does NOT constitute a formal proof.",
+    "It does NOT establish comparative superiority over any other system.",
+    "Latency and throughput figures are single-process, single-machine, and environment-specific."
+  ],
+  "end_to_end": {
+    "receipt_mutation_detail": [
+      {
+        "detected": true,
+        "mutated_field": "activation_id",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "admission_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "contract_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "decision",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "decision_time",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "exact_action_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "execution_result",
+        "reason_code": "VEIP_INVALID_EXECUTION_RESULT"
+      },
+      {
+        "detected": true,
+        "mutated_field": "projection_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "receipt_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "runtime_fact_set_digest",
+        "reason_code": "VEIP_RECEIPT_MISMATCH"
+      },
+      {
+        "detected": true,
+        "mutated_field": "activation_id (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "admission_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "contract_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "decision (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "decision_time (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "exact_action_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "execution_result (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "projection_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "receipt_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      },
+      {
+        "detected": true,
+        "mutated_field": "runtime_fact_set_digest (removed)",
+        "reason_code": "VEIP_RECEIPT_MALFORMED"
+      }
+    ],
+    "specimens": [
+      {
+        "category": "happy_path",
+        "description": "Happy path: valid contract, valid facts, permitted action",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": true,
+        "specimen": "E2E-01"
+      },
+      {
+        "category": "stale_fact",
+        "description": "Stale runtime fact: freshness window exceeded",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_FACT_STALE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "E2E-02"
+      },
+      {
+        "category": "malformed_contract",
+        "description": "Malformed contract artifact",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_DOMAIN_ESCAPE",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "E2E-03"
+      },
+      {
+        "category": "unsupported_domain",
+        "description": "Action outside the declared projection domain",
+        "expected_result": "REFUSE",
+        "failure_stage": "authorization_decision",
+        "notes": "",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "RUN_UNCLASSIFIED_ACTION",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "E2E-04"
+      },
+      {
+        "category": "source_version_mutation",
+        "description": "Source/version material changed with stale (non-recomputed) digest binding",
+        "expected_result": "REFUSE",
+        "failure_stage": "digest_binding",
+        "notes": "contract.identity.version altered; activation/admission/proof digests left stale",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "AC_DIGEST",
+        "receipt_generated": false,
+        "receipt_verified": null,
+        "specimen": "E2E-06"
+      },
+      {
+        "category": "receipt_mutation",
+        "description": "Receipt mutation and truncation across every protected field",
+        "expected_result": "REFUSE",
+        "failure_stage": "receipt_verification",
+        "notes": "20 mutation/truncation variants tested; 20 detected",
+        "observed_result": "REFUSE",
+        "pass_fail": "PASS",
+        "reason_code": "VEIP_RECEIPT_MISMATCH/MALFORMED",
+        "receipt_generated": true,
+        "receipt_verified": false,
+        "specimen": "E2E-05"
+      },
+      {
+        "category": "deterministic_replay",
+        "description": "Deterministic replay, 100 executions of the identical specimen",
+        "expected_result": "ALLOW",
+        "failure_stage": null,
+        "notes": "all protected receipt fields byte-identical across replays",
+        "observed_result": "ALLOW",
+        "pass_fail": "PASS",
+        "reason_code": "OK",
+        "receipt_generated": true,
+        "receipt_verified": true,
+        "specimen": "E2E-07"
+      }
+    ],
+    "totals": {
+      "failed": 0,
+      "passed": 7,
+      "total": 7
+    }
+  },
+  "environment": {
+    "commit_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
+    "dependency_versions": {
+      "pytest": "9.1.1",
+      "rfc8785": "0.1.4"
+    },
+    "git_status_clean": false,
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "tree_sha": "61375c762b1e9b9e9e602adf7921df7da17d9456"
+  },
+  "generated_at_utc": "2026-08-24T13:43:12Z",
+  "provenance": {
+    "benchmark_harness_sha": "a7f6ba374b1362e624a3f8b912b265dd03da4cdd",
+    "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+    "dut_verification": {
+      "dut_base_sha": "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc",
+      "dut_paths": [
+        "authcontract",
+        "tests",
+        "fixtures",
+        ".github",
+        "pyproject.toml",
+        "README.md",
+        "docs/SOTA.md",
+        "docs/SOTA-EVIDENCE.md",
+        "docs/DEVELOPER-LANGUAGE.md",
+        "docs/CLEANROOM-VALIDATION-RUNBOOK.md"
+      ],
+      "modified_dut_files": [],
+      "statement": "All device-under-test paths are byte-identical to e4e1a97509df1a66c44b090c0a0ca0a03907f4dc; the benchmark harness changed nothing under measurement.",
+      "verified": true
+    },
+    "note": "DUT_BASE_SHA is the AuthContract implementation being measured. BENCHMARK_HARNESS_SHA is the commit containing the harness that measured it \u2014 necessarily a later commit, since the harness did not exist at DUT_BASE_SHA. Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
+  },
+  "work_order": "AC-035 / AC-035A"
+}
