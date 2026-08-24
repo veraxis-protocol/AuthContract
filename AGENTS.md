@@ -56,7 +56,14 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[test]"
 ```
 
+For the exact dependency versions CI and the benchmarks use, add the controlled
+set: `pip install -e ".[test]" -c constraints.txt`. See
+[`docs/VERSIONING.md`](docs/VERSIONING.md).
+
 Verify: `pytest -q` → `342 passed`.
+
+Falsify: `python3 falsify.py` → 5 cases, all matching their declared expected
+disposition, exit `0`. Run this rather than assuming the refusal paths work.
 
 **Not on PyPI.** `pip install authcontract` will not work. Install from source only.
 
@@ -241,10 +248,37 @@ Do not soften, omit, or paraphrase this ceiling when summarizing the project.
 ## 15. Licensing
 
 **No license is declared.** No `LICENSE` file exists and `pyproject.toml`
-declares no license field, so default copyright applies and no usage rights are
-granted. Treat this as source-available for evaluation and reading. **Do not
+declares no SPDX license field, so default copyright applies and no usage rights
+are granted. `pyproject.toml` carries the Trove classifier
+`License :: Other/Proprietary License` — a machine-readable statement that this
+is **not** open source. That classifier is a description, not a grant. Treat this as source-available for evaluation and reading. **Do not
 describe it as open source**, and do not assume redistribution or derivative
 rights. Direct licensing questions to the repository owner.
+
+## 15a. Version and interface stability
+
+Package version is `0.0.1` and has never been published or incremented per
+change. **The commit SHA is the only reliable identity** — two checkouts both
+reporting `0.0.1` may differ. Semantic Versioning is **not** implemented or
+claimed. Pre-1.0 interfaces may change without a major bump. The one commitment
+made is that reason codes will not change meaning *silently* under the same
+version. Full policy and the declared public surface:
+[`docs/VERSIONING.md`](docs/VERSIONING.md).
+
+## 15b. Falsification harness
+
+`python3 falsify.py` runs five public cases — valid ALLOW, undeclared action,
+stale fact, untampered receipt, tampered receipt binding — each against a
+declared expected disposition, and exits non-zero on any mismatch in either
+direction. Use it to verify refusal behaviour rather than asserting it.
+
+## 15c. Security reporting
+
+Do not open a public issue for a suspected vulnerability. See
+[`SECURITY.md`](SECURITY.md). A private reporting route is **not yet
+established** — that is recorded there as requiring owner action, not glossed
+over. Automated dependency-advisory checking runs in CI; a passing scan is
+**not** an audit and establishes nothing about this project's own code.
 
 ## 16. Prohibition on invention
 

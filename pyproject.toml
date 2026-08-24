@@ -5,6 +5,26 @@ description = "AuthContract reference implementation — canonical digest and ru
 requires-python = ">=3.10"
 dependencies = ["rfc8785>=0.1.2"]
 
+# Machine-readable licensing state (AC-039).
+#
+# This project has NO license grant. Default copyright applies and no usage,
+# redistribution, or derivative rights are conferred. The Trove classifier below
+# is the ecosystem-standard machine-readable way to say exactly that: it marks
+# the project as proprietary — i.e. NOT open source — without inventing rights
+# that the owner has not granted.
+#
+# Deliberately NOT declared: any SPDX identifier (MIT/Apache-2.0/BSD/etc.).
+# Using one would be false. A PEP 639 `license = "LicenseRef-..."` expression
+# would also require an accompanying license text file, which only the owner can
+# author. Selecting an actual license remains an open owner decision — see
+# docs/VERSIONING.md and README.md.
+classifiers = [
+    "License :: Other/Proprietary License",
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+]
+
 [project.scripts]
 authcontract = "authcontract.cli:main"
 
