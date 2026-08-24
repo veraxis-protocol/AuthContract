@@ -59,7 +59,7 @@ EXECUTION_RESULT = "SIMULATED_SUCCESS"
 # set. The AC-035A results measured a DIFFERENT dependency environment; they are
 # preserved unchanged under their own AC-035 result identity and must not be
 # presented as measurements of this one.
-DUT_BASE_SHA = "8e04e9c5e60f1e4cb604689419c0bb4c24ec903b"
+DUT_BASE_SHA = "389e9ff557f0c1f12996b7ebbc478689f38abdda"
 
 # Result-set identity. Results are written under this prefix so a new
 # measurement never overwrites the provenance of an earlier one.

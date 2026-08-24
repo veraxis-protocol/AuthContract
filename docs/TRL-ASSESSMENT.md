@@ -1,7 +1,7 @@
 # AuthContract — TRL assessment (AC-035)
 
-**Implementation assessed (DUT):** `8e04e9c5e60f1e4cb604689419c0bb4c24ec903b`
-**Measured by harness:** `8e04e9c5e60f1e4cb604689419c0bb4c24ec903b`
+**Implementation assessed (DUT):** `389e9ff557f0c1f12996b7ebbc478689f38abdda`
+**Measured by harness:** `389e9ff557f0c1f12996b7ebbc478689f38abdda`
 **Basis:** the AC-039 re-measurement, which re-ran the AC-035/AC-035A battery
 against a controlled dependency set. The earlier AC-035A figures measured a
 different dependency environment and are retained as history, not as current

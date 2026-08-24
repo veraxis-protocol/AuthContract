@@ -318,10 +318,10 @@ stopped being measurements of the current system. The full battery was re-run:
 `benchmarks/results/AC-039-*.json`. The AC-035A record is preserved unmodified
 in [`docs/BENCHMARKS.md`](BENCHMARKS.md) under a banner marking it superseded.
 
-DUT `8e04e9c5e60f1e4cb604689419c0bb4c24ec903b`, `verified: true`,
+DUT `389e9ff557f0c1f12996b7ebbc478689f38abdda`, `verified: true`,
 `matches_declared_set: true`. 7/7 E2E · 38/38 adversarial · 342 tests ·
-determinism stable · observed sustained end-to-end throughput median 1680.0
-ops/sec (min 1665.1, max 1722.5).
+determinism stable · observed sustained end-to-end throughput median 1697.5
+ops/sec (min 1688.4, max 1710.8).
 
 ## Revised finding dispositions
 

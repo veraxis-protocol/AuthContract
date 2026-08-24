@@ -214,7 +214,7 @@
     }
   },
   "environment": {
-    "commit_sha": "8e04e9c5e60f1e4cb604689419c0bb4c24ec903b",
+    "commit_sha": "389e9ff557f0c1f12996b7ebbc478689f38abdda",
     "dependency_versions": {
       "pytest": "9.1.1",
       "rfc8785": "0.1.4"
@@ -225,11 +225,11 @@
     "processor": "x86_64",
     "python_implementation": "CPython",
     "python_version": "3.11.15",
-    "tree_sha": "bfea6f455839c414865865e9a3eb4610bd41b74b"
+    "tree_sha": "edd3b56bc794720672ce9853e8173e1a2b446e17"
   },
-  "generated_at_utc": "2026-08-24T21:18:09Z",
+  "generated_at_utc": "2026-08-24T21:23:53Z",
   "provenance": {
-    "benchmark_harness_sha": "8e04e9c5e60f1e4cb604689419c0bb4c24ec903b",
+    "benchmark_harness_sha": "389e9ff557f0c1f12996b7ebbc478689f38abdda",
     "dependency_identity": {
       "constraints_file": "constraints.txt",
       "declared": {
@@ -259,9 +259,9 @@
       "mismatched": {},
       "note": "declared_but_not_installed is expected for distributions pinned only for older Python versions (pytest pulls exceptiongroup and tomli on Python < 3.11 only). A non-empty 'mismatched' means this run did not measure the controlled dependency set."
     },
-    "dut_base_sha": "8e04e9c5e60f1e4cb604689419c0bb4c24ec903b",
+    "dut_base_sha": "389e9ff557f0c1f12996b7ebbc478689f38abdda",
     "dut_verification": {
-      "dut_base_sha": "8e04e9c5e60f1e4cb604689419c0bb4c24ec903b",
+      "dut_base_sha": "389e9ff557f0c1f12996b7ebbc478689f38abdda",
       "dut_paths": [
         "authcontract",
         "tests",
@@ -275,7 +275,7 @@
         "docs/CLEANROOM-VALIDATION-RUNBOOK.md"
       ],
       "modified_dut_files": [],
-      "statement": "All device-under-test paths are byte-identical to 8e04e9c5e60f1e4cb604689419c0bb4c24ec903b; the benchmark harness changed nothing under measurement.",
+      "statement": "All device-under-test paths are byte-identical to 389e9ff557f0c1f12996b7ebbc478689f38abdda; the benchmark harness changed nothing under measurement.",
       "verified": true
     },
     "note": "DUT_BASE_SHA is the AuthContract implementation being measured. BENCHMARK_HARNESS_SHA is the commit containing the harness that measured it \u2014 necessarily a later commit, since the harness did not exist at DUT_BASE_SHA. Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
