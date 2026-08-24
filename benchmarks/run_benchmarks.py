@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from harness import (  # noqa: E402
     REPO_ROOT,
     capture_environment,
+    latency_derived_rate,
     load_fixture,
     load_fixture_text,
     make_action_scaled_specimen,
@@ -36,7 +37,8 @@ from harness import (  # noqa: E402
     measure,
     measure_cold,
     measure_peak_memory,
-    throughput_per_second,
+    sustained_throughput,
+    verify_dut_unchanged,
     write_result,
 )
 from specimens import ADVERSARIAL_SPECIMENS, E2E_SPECIMENS  # noqa: E402
@@ -46,6 +48,18 @@ from authcontract.projection import check_action, project, projection_digest, pr
 from authcontract.veip import run_specimen, verify_receipt  # noqa: E402
 
 EXECUTION_RESULT = "SIMULATED_SUCCESS"
+
+# The AuthContract implementation under measurement. The harness that measures
+# it is introduced by a LATER commit, so these are deliberately distinct values:
+# DUT_BASE_SHA identifies the product; the harness SHA is captured at runtime.
+# `verify_dut_unchanged` proves the harness commit modified nothing under
+# measurement, which is what makes the two safely comparable.
+DUT_BASE_SHA = "e4e1a97509df1a66c44b090c0a0ca0a03907f4dc"
+
+# Sustained-throughput measurement window.
+THROUGHPUT_TRIALS = 3
+THROUGHPUT_SECONDS = 5.0
+THROUGHPUT_WARMUP_SECONDS = 1.0
 
 # Repetition counts. Chosen so each stage's sample is large enough for a stable
 # p99 without making the suite take longer than a developer will tolerate.
@@ -368,12 +382,17 @@ def phase_performance() -> dict[str, Any]:
         "complete_end_to_end_cold": measure_cold(full_e2e),
     }
 
-    throughput = {
-        "note": "Single-process, single-threaded, derived from warm mean latency. Not a distributed or multi-core claim.",
-        "decisions_per_second": throughput_per_second(stages["decision_and_receipt"]["summary"]),
-        "receipts_per_second": throughput_per_second(stages["decision_and_receipt"]["summary"]),
-        "receipt_verifications_per_second": throughput_per_second(stages["receipt_verification"]["summary"]),
-        "complete_e2e_transactions_per_second": throughput_per_second(stages["complete_end_to_end"]["summary"]),
+    latency_derived = {
+        "method": "LATENCY-DERIVED RATE — reciprocal of warm mean latency, NOT an observed rate",
+        "caveat": (
+            "This is arithmetic, not measurement: it assumes zero loop overhead and no "
+            "drift under continuous operation. Compare against observed_sustained_throughput "
+            "below; where they disagree, the observed figure is the real one."
+        ),
+        "decisions_per_second": latency_derived_rate(stages["decision_and_receipt"]["summary"]),
+        "receipts_per_second": latency_derived_rate(stages["decision_and_receipt"]["summary"]),
+        "receipt_verifications_per_second": latency_derived_rate(stages["receipt_verification"]["summary"]),
+        "complete_e2e_transactions_per_second": latency_derived_rate(stages["complete_end_to_end"]["summary"]),
         "receipts_per_second_caveat": (
             "Receipt emission is not separately callable at this commit: run_specimen "
             "decides and emits in one pass, so decisions/sec and receipts/sec are the "
@@ -381,7 +400,37 @@ def phase_performance() -> dict[str, Any]:
         ),
     }
 
-    return {"stages": stages, "cold_vs_warm": cold, "throughput": throughput}
+    observed = {
+        "note": (
+            "Observed sustained rates: continuous single-process, single-threaded loops over "
+            "fixed wall-clock windows. No concurrency. Not a distributed or multi-core claim."
+        ),
+        "decision_and_receipt": sustained_throughput(
+            lambda: _run(artifact, action, facts),
+            duration_seconds=THROUGHPUT_SECONDS,
+            warmup_seconds=THROUGHPUT_WARMUP_SECONDS,
+            trials=THROUGHPUT_TRIALS,
+        ),
+        "receipt_verification": sustained_throughput(
+            lambda: verify_receipt(receipt, artifact, action, facts),
+            duration_seconds=THROUGHPUT_SECONDS,
+            warmup_seconds=THROUGHPUT_WARMUP_SECONDS,
+            trials=THROUGHPUT_TRIALS,
+        ),
+        "complete_end_to_end": sustained_throughput(
+            full_e2e,
+            duration_seconds=THROUGHPUT_SECONDS,
+            warmup_seconds=THROUGHPUT_WARMUP_SECONDS,
+            trials=THROUGHPUT_TRIALS,
+        ),
+    }
+
+    return {
+        "stages": stages,
+        "cold_vs_warm": cold,
+        "latency_derived_rate": latency_derived,
+        "observed_sustained_throughput": observed,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -793,7 +842,25 @@ def main() -> int:
     started = time.time()
     environment = capture_environment()
 
-    print("AC-035 benchmark — commit", environment["commit_sha"][:12])
+    provenance = {
+        "dut_base_sha": DUT_BASE_SHA,
+        "benchmark_harness_sha": environment["commit_sha"],
+        "note": (
+            "DUT_BASE_SHA is the AuthContract implementation being measured. "
+            "BENCHMARK_HARNESS_SHA is the commit containing the harness that measured it — "
+            "necessarily a later commit, since the harness did not exist at DUT_BASE_SHA. "
+            "Reproduce from BENCHMARK_HARNESS_SHA, not from DUT_BASE_SHA."
+        ),
+        "dut_verification": verify_dut_unchanged(DUT_BASE_SHA),
+    }
+
+    if not provenance["dut_verification"]["verified"]:
+        print("REFUSING TO RUN:", provenance["dut_verification"]["statement"], file=sys.stderr)
+        return 2
+
+    print("AC-035 benchmark")
+    print("  DUT      :", DUT_BASE_SHA[:12], "(verified unchanged)")
+    print("  harness  :", environment["commit_sha"][:12])
     print("  phase: end-to-end + correctness matrix")
     e2e = phase_e2e_and_correctness()
     print("  phase: performance")
@@ -808,7 +875,8 @@ def main() -> int:
     resources = phase_resources()
 
     common = {
-        "work_order": "AC-035",
+        "work_order": "AC-035 / AC-035A",
+        "provenance": provenance,
         "environment": environment,
         "claim_ceiling": CLAIM_CEILING,
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -829,7 +897,11 @@ def main() -> int:
     print(f"  E2E:         {e2e_totals['passed']}/{e2e_totals['total']} passed")
     print(f"  Adversarial: {adv_totals['passed']}/{adv_totals['total']} passed")
     print(f"  E2E p50:     {performance['stages']['complete_end_to_end']['summary']['p50']} us")
-    print(f"  E2E tps:     {performance['throughput']['complete_e2e_transactions_per_second']}")
+    print(
+        "  E2E tps:     "
+        f"{performance['observed_sustained_throughput']['complete_end_to_end']['median_ops_per_second']} observed median"
+        f" (latency-derived {performance['latency_derived_rate']['complete_e2e_transactions_per_second']})"
+    )
     print(f"  Determinism: {'stable' if determinism['fully_deterministic_over_fixed_inputs'] else 'NOT STABLE'}")
     print(f"  elapsed:     {time.time() - started:.1f}s")
 

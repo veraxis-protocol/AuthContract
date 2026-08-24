@@ -146,12 +146,133 @@ def measure_cold(operation: Callable[[], Any]) -> dict[str, Any]:
     return {"unit": "microseconds", "single_cold_execution": round((time.perf_counter() - start) * 1e6, 3)}
 
 
-def throughput_per_second(summary: dict[str, Any]) -> float:
-    """Derive sustained single-process rate from a mean latency in microseconds."""
+def latency_derived_rate(summary: dict[str, Any]) -> float:
+    """Reciprocal of mean latency. This is an ARITHMETIC DERIVATION, not an
+    observed throughput measurement — it assumes zero per-iteration overhead
+    and no drift over time. Report it only alongside `sustained_throughput`,
+    never as a substitute for it."""
     mean_seconds = summary["mean"] / 1e6
     if mean_seconds <= 0:
         return float("inf")
     return round(1.0 / mean_seconds, 1)
+
+
+def sustained_throughput(
+    operation: Callable[[], Any],
+    *,
+    duration_seconds: float = 5.0,
+    warmup_seconds: float = 1.0,
+    trials: int = 3,
+) -> dict[str, Any]:
+    """Observed sustained rate: run `operation` continuously for a fixed wall-clock
+    window and count completed operations.
+
+    This is a genuine throughput measurement rather than a reciprocal of mean
+    latency: it includes loop overhead, allocator behaviour, and any drift that
+    appears only under continuous operation, none of which a latency reciprocal
+    captures. Single process, single thread, no concurrency.
+    """
+    trial_results: list[dict[str, Any]] = []
+
+    for trial_index in range(trials):
+        warmup_deadline = time.perf_counter() + warmup_seconds
+        while time.perf_counter() < warmup_deadline:
+            operation()
+
+        operations = 0
+        start = time.perf_counter()
+        deadline = start + duration_seconds
+        while time.perf_counter() < deadline:
+            operation()
+            operations += 1
+        elapsed = time.perf_counter() - start
+
+        trial_results.append(
+            {
+                "trial": trial_index + 1,
+                "operations": operations,
+                "elapsed_seconds": round(elapsed, 4),
+                "operations_per_second": round(operations / elapsed, 1),
+            }
+        )
+
+    rates = sorted(trial["operations_per_second"] for trial in trial_results)
+    return {
+        "method": "observed sustained rate — continuous single-threaded loop over a fixed window",
+        "warmup_seconds": warmup_seconds,
+        "measurement_seconds_per_trial": duration_seconds,
+        "trials": trials,
+        "trial_detail": trial_results,
+        "total_operations": sum(trial["operations"] for trial in trial_results),
+        "min_ops_per_second": rates[0],
+        "median_ops_per_second": statistics.median(rates),
+        "max_ops_per_second": rates[-1],
+    }
+
+
+# --------------------------------------------------------------------------
+# device-under-test provenance (AC-035A)
+# --------------------------------------------------------------------------
+
+# Paths that constitute the device under test. The benchmark measures these and
+# must not modify them; the harness itself lives outside this set.
+DUT_PATHS = (
+    "authcontract",
+    "tests",
+    "fixtures",
+    ".github",
+    "pyproject.toml",
+    "README.md",
+    "docs/SOTA.md",
+    "docs/SOTA-EVIDENCE.md",
+    "docs/DEVELOPER-LANGUAGE.md",
+    "docs/CLEANROOM-VALIDATION-RUNBOOK.md",
+)
+
+
+def verify_dut_unchanged(dut_base_sha: str) -> dict[str, Any]:
+    """Prove the measured product files are byte-identical to `dut_base_sha`.
+
+    The harness is introduced by a later commit than the implementation it
+    measures, so "which commit was measured" cannot be answered by HEAD alone.
+    This diffs only the DUT paths between HEAD and the declared base: an empty
+    diff establishes that the harness commit changed nothing under measurement.
+    """
+    try:
+        # Deliberately diff against the WORKING TREE, not against HEAD: the
+        # benchmark imports and measures the files on disk, so a comparison
+        # between two commits would report "verified" while an uncommitted edit
+        # silently changed what was actually measured. Omitting the second
+        # revision makes git compare dut_base_sha to the working tree, catching
+        # committed and uncommitted drift alike.
+        completed = subprocess.run(
+            ["git", "diff", "--name-only", dut_base_sha, "--", *DUT_PATHS],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        return {
+            "verified": False,
+            "error": f"could not diff against {dut_base_sha}: {exc}",
+            "dut_paths": list(DUT_PATHS),
+        }
+
+    modified = [line for line in completed.stdout.splitlines() if line.strip()]
+    return {
+        "verified": not modified,
+        "dut_base_sha": dut_base_sha,
+        "dut_paths": list(DUT_PATHS),
+        "modified_dut_files": modified,
+        "statement": (
+            f"All device-under-test paths are byte-identical to {dut_base_sha}; the "
+            "benchmark harness changed nothing under measurement."
+            if not modified
+            else f"DUT DRIFT: {len(modified)} file(s) differ from {dut_base_sha}. "
+            "Results do NOT describe that commit."
+        ),
+    }
 
 
 # --------------------------------------------------------------------------
