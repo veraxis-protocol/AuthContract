@@ -262,6 +262,7 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | See what is planned and why | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | Validate a clean clone yourself | [`docs/CLEANROOM-VALIDATION-RUNBOOK.md`](docs/CLEANROOM-VALIDATION-RUNBOOK.md) |
 | See how this repository was usability-tested | [`docs/REPOSITORY-USABILITY.md`](docs/REPOSITORY-USABILITY.md) |
+| See the release-readiness verification record | [`docs/RELEASE-READINESS.md`](docs/RELEASE-READINESS.md) |
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
