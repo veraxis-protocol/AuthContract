@@ -34,7 +34,8 @@ pip install -e ".[test]"
 Confirm the install:
 
 ```bash
-pytest -q          # expect: 342 passed
+make test          # expect: 342 passed
+make falsify       # expect: 4/4 bounded outcomes observed
 ```
 
 > Not on PyPI. Install from source, as above.
@@ -300,6 +301,9 @@ Measured evidence and its limits: [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-
 | Report a suspected vulnerability | [`SECURITY.md`](SECURITY.md) |
 | Understand the contribution situation | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
+| Review dependency and SBOM policy | [`DEPENDENCIES.md`](DEPENDENCIES.md) |
+| Review security reporting | [`SECURITY.md`](SECURITY.md) |
+| Review compatibility policy | [`VERSIONING.md`](VERSIONING.md) |
 | See how this compares to other systems | [`docs/SOTA.md`](docs/SOTA.md) |
 | Understand the full conceptual model | keep reading below |
 | Use AuthContract from an AI coding agent | [`AGENTS.md`](AGENTS.md) |
@@ -318,7 +322,8 @@ Measured evidence and its limits: [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-
 contributor licence or review policy exists. Issues are the reliable path today.
 If you are considering a substantive contribution, open an issue first so it
 isn't wasted effort. [`CONTRIBUTING.md`](CONTRIBUTING.md) states exactly what
-does and does not exist.
+does and does not exist, including evidence, role-separation, and
+agent-provenance expectations for an owner-agreed change.
 
 **Security.** Do not report a suspected vulnerability through a public issue.
 [`SECURITY.md`](SECURITY.md) sets out the triage policy and the current state of

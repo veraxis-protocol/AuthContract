@@ -1,64 +1,45 @@
 name: Security
 
-# Automated dependency-advisory monitoring (AC-039).
-#
-# Audits the CONTROLLED dependency set in constraints.txt — the exact versions
-# CI installs and the benchmarks are bound to — against the PyPI/OSV advisory
-# databases via pip-audit, the PyPA-maintained tool for this ecosystem.
-#
-# The schedule matters: an advisory can be published against an unchanged
-# dependency set, so a check that only ran on push would go stale silently.
-#
-# SCOPE, stated exactly: this audits THIRD-PARTY DEPENDENCIES only. It does not
-# analyse AuthContract's own source for security defects, and a green run is
-# not an audit. See SECURITY.md §5.
-
+# Automated dependency-advisory monitoring (AC-039). This workflow audits
+# third-party dependencies only; a green run is not a security audit.
 on:
   push:
   pull_request:
   schedule:
-    # Weekly, so a newly published advisory against an unchanged dependency set
-    # surfaces without waiting for the next commit.
     - cron: "17 6 * * 1"
 
 permissions:
   contents: read
 
 jobs:
-  dependency-advisories:
-    name: Dependency advisory audit
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+
+  advisory-scan:
+    name: Dependency advisory audit and SBOM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
-
       - name: Install the auditor at a pinned version
         run: pip install "pip-audit==2.10.1"
-
       - name: Audit the controlled dependency set
         run: |
-          # --no-deps audits exactly the pinned closure in constraints.txt
-          # rather than re-resolving it, so the audited set is the installed
-          # set. --strict fails if any listed dependency could not be audited,
-          # so "no findings" cannot mean "nothing was checked".
-          #
-          # There is deliberately no severity threshold and no ignore list:
-          # ANY known advisory against a pinned dependency fails this job. That
-          # is stricter than the HIGH/CRITICAL floor it has to satisfy. A
-          # finding is never suppressed to make this workflow green — it is
-          # fixed by upgrading, or adjudicated as an explicit exception by a
-          # human, in the open.
           set +e
           pip-audit -r constraints.txt --no-deps --strict \
             --format json --output pip-audit.json
           rc=$?
           set -e
-          echo "--- pip-audit report (inspectable evidence) ---"
           cat pip-audit.json
-          echo
-          echo "--- summary ---"
           python3 - <<'PY'
           import json, sys
 
@@ -75,7 +56,6 @@ jobs:
           report = json.load(open("pip-audit.json"))
           deps = report.get("dependencies", [])
           audited = {norm(d["name"]) for d in deps}
-
           findings = [d for d in deps if d.get("vulns")]
           print(f"pinned: {len(pins)}   audited: {len(audited)}")
           for d in findings:
@@ -83,12 +63,6 @@ jobs:
                   fixed = ", ".join(v.get("fix_versions") or []) or "no fix listed"
                   print(f"VULNERABLE {d['name']}=={d['version']} {v['id']} (fix: {fixed})")
           print(f"{len(findings)} dependency/dependencies with known advisories")
-
-          # Coverage assertion. The auditor drops a pin it cannot resolve in the
-          # advisory service and still exits 0, so "no known vulnerabilities"
-          # can otherwise mean "this package was never checked". Treat an
-          # unaudited pin as a failure, not as a pass. There is deliberately no
-          # allowlist here: the fix is to pin a version with advisory coverage.
           unaudited = sorted(set(pins) - audited)
           if unaudited:
               print("UNAUDITED PINS (advisory coverage missing):")
@@ -98,3 +72,7 @@ jobs:
           print("coverage OK: every pinned dependency was audited")
           PY
           exit $rc
+      - name: Install project for candidate SBOM
+        run: pip install -e ".[test]" -c constraints.txt
+      - name: Generate candidate SBOM
+        run: make sbom

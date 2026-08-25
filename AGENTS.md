@@ -67,6 +67,20 @@ disposition, exit `0`. Run this rather than assuming the refusal paths work.
 
 **Not on PyPI.** `pip install authcontract` will not work. Install from source only.
 
+## 4.1 Real repository skills
+
+Agents may use only these implemented workflows:
+
+- `make test` — execute the committed test suite;
+- `make falsify` — exercise the bounded PASS/refusal/tamper cases;
+- `make no-network` — run the local install/import/test/CLI network guard;
+- `make sbom` — generate the bounded candidate SBOM; and
+- the six CLI commands listed below.
+
+None of these commands publishes, deploys, attests a release, or adjudicates its
+own result. Producers must state `NOT SELF-ADJUDICATED` and stop for independent
+verification.
+
 ## 5. Supported CLI commands
 
 Exactly six. Any other subcommand does not exist.

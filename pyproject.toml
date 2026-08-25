@@ -3,7 +3,7 @@ name = "authcontract"
 version = "0.0.1"
 description = "AuthContract reference implementation — canonical digest and runtime fact admissibility"
 requires-python = ">=3.10"
-dependencies = ["rfc8785>=0.1.2"]
+dependencies = ["rfc8785>=0.1.2,<0.2"]
 
 # Machine-readable licensing state (AC-039).
 #
@@ -29,7 +29,7 @@ classifiers = [
 authcontract = "authcontract.cli:main"
 
 [project.optional-dependencies]
-test = ["pytest>=7.0"]
+test = ["pytest>=7.0,<10"]
 
 [tool.setuptools.packages.find]
 include = ["authcontract*"]
