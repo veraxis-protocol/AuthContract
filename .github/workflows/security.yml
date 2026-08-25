@@ -1,9 +1,12 @@
-name: Dependency and vulnerability review
+name: Security
 
+# Automated dependency-advisory monitoring (AC-039). This workflow audits
+# third-party dependencies only; a green run is not a security audit.
 on:
-  pull_request:
   push:
-    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
 
 permissions:
   contents: read
@@ -20,13 +23,56 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
 
   advisory-scan:
+    name: Dependency advisory audit and SBOM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
-      - run: python -m pip install --upgrade "pip>=26.2" "pip-audit==2.10.1"
-      - run: python -m pip install -e ".[test]"
-      - run: python -m pip_audit --skip-editable
-      - run: make sbom
+      - name: Install the auditor at a pinned version
+        run: pip install "pip-audit==2.10.1"
+      - name: Audit the controlled dependency set
+        run: |
+          set +e
+          pip-audit -r constraints.txt --no-deps --strict \
+            --format json --output pip-audit.json
+          rc=$?
+          set -e
+          cat pip-audit.json
+          python3 - <<'PY'
+          import json, sys
+
+          def norm(name):
+              return name.lower().replace("_", "-")
+
+          pins = {}
+          for line in open("constraints.txt"):
+              line = line.split("#", 1)[0].strip()
+              if line:
+                  name, version = line.split("==")
+                  pins[norm(name)] = version
+
+          report = json.load(open("pip-audit.json"))
+          deps = report.get("dependencies", [])
+          audited = {norm(d["name"]) for d in deps}
+          findings = [d for d in deps if d.get("vulns")]
+          print(f"pinned: {len(pins)}   audited: {len(audited)}")
+          for d in findings:
+              for v in d["vulns"]:
+                  fixed = ", ".join(v.get("fix_versions") or []) or "no fix listed"
+                  print(f"VULNERABLE {d['name']}=={d['version']} {v['id']} (fix: {fixed})")
+          print(f"{len(findings)} dependency/dependencies with known advisories")
+          unaudited = sorted(set(pins) - audited)
+          if unaudited:
+              print("UNAUDITED PINS (advisory coverage missing):")
+              for name in unaudited:
+                  print(f"  {name}=={pins[name]}")
+              sys.exit(1)
+          print("coverage OK: every pinned dependency was audited")
+          PY
+          exit $rc
+      - name: Install project for candidate SBOM
+        run: pip install -e ".[test]" -c constraints.txt
+      - name: Generate candidate SBOM
+        run: make sbom

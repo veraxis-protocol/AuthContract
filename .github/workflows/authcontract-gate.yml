@@ -13,6 +13,12 @@ name: AuthContract Gate
 on:
   pull_request:
 
+# Least privilege (AC-039). The gate reads the repository and adjudicates; it
+# writes nothing back to GitHub. The default token grant is deliberately not
+# relied on.
+permissions:
+  contents: read
+
 jobs:
   gate:
     name: AuthContract Gate
@@ -37,7 +43,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: pip install -e ".[test]"
+        run: pip install -e ".[test]" -c constraints.txt
 
       - name: Run AuthContract test suite against the merge composition
         id: tests

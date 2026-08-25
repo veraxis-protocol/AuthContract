@@ -1,0 +1,61 @@
+# Controlled dependency set for AuthContract (AC-039).
+#
+# WHAT THIS IS
+# ------------
+# The exact resolved versions of every third-party distribution the project and
+# its test extra pull in. CI installs with `-c constraints.txt`, so a clean
+# install reproduces this set rather than whatever the resolver happens to pick
+# on the day. Benchmark and correctness results are bound to these versions.
+#
+# WHAT THIS IS NOT
+# ----------------
+# This is NOT hash-pinning and NOT byte-for-byte reproducible packaging. The
+# project is installed editable (`pip install -e .`), and pip's
+# `--require-hashes` mode cannot be combined with an editable install, so hash
+# pinning is unavailable for this install shape. No release artifact, wheel, or
+# sdist is published from this repository, so there is nothing further downstream
+# to attest. See docs/VERSIONING.md.
+#
+# UPDATE PROCESS
+# --------------
+#   1. Regenerate the closure for the OLDEST supported Python (3.10):
+#        pip install --dry-run --report report.json --only-binary=:all: \
+#          --python-version 3.10 --target /tmp/discard "rfc8785>=0.1.2" "pytest>=7.0"
+#   2. Rewrite the pins below from that report.
+#   3. Run the full suite and falsify.py on every supported Python version.
+#   4. Re-run benchmarks/run_benchmarks.py with DUT_BASE_SHA updated to the
+#      commit carrying the change, and record a NEW result set. Do not present
+#      an older result set as a measurement of a changed dependency environment.
+#
+# ADVISORY COVERAGE
+# -----------------
+# Every pin here must be resolvable by the advisory service the Security
+# workflow queries; that workflow FAILS if any pin comes back unaudited, so
+# a version with no advisory coverage cannot pass as "no findings".
+# `packaging` is held at 25.0 for exactly this reason: 26.3 resolves and
+# installs, but the advisory service returns no record for it, which would
+# make it silently unauditable. pytest requires only `packaging>=22`, so
+# 25.0 is a fully supported choice and the stricter one.
+#
+# Floors stay declared in pyproject.toml; this file fixes what those floors
+# resolve to. Changing a floor without regenerating this file is dependency
+# drift and is what this file exists to prevent.
+
+# --- runtime ---
+rfc8785==0.1.4
+
+# --- test extra ---
+pytest==9.1.1
+
+# --- transitive, pulled in by pytest ---
+iniconfig==2.3.0
+packaging==25.0
+pluggy==1.6.0
+Pygments==2.21.0
+
+# --- transitive, installed only on Python < 3.11 (pytest environment markers) ---
+# Pinned even though they are absent on 3.12: a constraint on a distribution
+# that is not installed is inert, and leaving them unpinned would mean the
+# 3.10 job silently resolves a different set than the 3.12 job.
+exceptiongroup==1.3.1
+tomli==2.4.1

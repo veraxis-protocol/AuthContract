@@ -151,6 +151,35 @@ Note that **no receipt is issued on refusal** — a refused decision never produ
 
 ---
 
+## Falsify it yourself
+
+Reproducing a happy path proves very little. The useful question is whether this
+system refuses when it should — and whether you can watch it do so.
+
+```bash
+python3 falsify.py
+```
+
+One command, no credentials, no network. It runs five cases against the
+committed fixtures and checks each against a **declared expected disposition**:
+
+| Case | Expected |
+|---|---|
+| Valid specimen | `PASS` / `OK` / exit 0, receipt issued |
+| Undeclared action | `REFUSED` / `RUN_UNCLASSIFIED_ACTION` / exit 1, no receipt |
+| Stale runtime fact | `REFUSED` / `RUN_FACT_STALE` / exit 1, no receipt |
+| Untampered receipt | `PASS` / `OK` / exit 0 |
+| Tampered receipt binding | `REFUSED` / `VEIP_RECEIPT_MISMATCH` / exit 1 |
+
+A case fails if what happens differs from what was expected **in either
+direction**. An unexpected refusal fails; so does an unexpected pass. The
+harness exits non-zero on any mismatch, so it works as a check in your own CI.
+
+If you find a mismatch, that is a real result. Please
+[open an issue](https://github.com/veraxis-protocol/AuthContract/issues).
+
+---
+
 ## What the result means
 
 | Field | Meaning |
@@ -243,7 +272,7 @@ Read this before forming expectations. The worked conceptual examples later in t
 - No concurrency, distribution, or measured multi-core scaling.
 - Evidence scope is one synthetic banking specimen family — not a general solution.
 
-Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · maturity assessment: [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md).
+Measured evidence and its limits: [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-AC-039.md) (current; [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) is the superseded earlier baseline) · maturity assessment: [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md).
 
 ---
 
@@ -251,19 +280,26 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 
 **No license is currently declared.** This repository contains no `LICENSE` file and `pyproject.toml` declares no license field. Absent an explicit grant, default copyright applies and no usage rights are conferred — so treat this as source-available for evaluation and reading, not as open source. If you need licensed use, ask the repository owner.
 
+`pyproject.toml` declares the Trove classifier `License :: Other/Proprietary License`. That is the machine-readable statement of the situation described above — it marks the project as **not** open source without inventing a grant. It is a description of the current state, not a license, and it confers nothing. No SPDX identifier is declared, because declaring one would be false. Selecting an actual license is an owner decision that has not been made.
+
 ---
 
 ## Where to go next
 
 | If you want to… | Go to |
 |---|---|
-| See measured performance and correctness evidence | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) |
+| See measured performance and correctness evidence | [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-AC-039.md) |
+| See the earlier, superseded baseline | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) |
 | Reproduce the benchmarks yourself | [`benchmarks/README.md`](benchmarks/README.md) |
 | Understand current maturity honestly | [`docs/TRL-ASSESSMENT.md`](docs/TRL-ASSESSMENT.md) |
 | See what is planned and why | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | Validate a clean clone yourself | [`docs/CLEANROOM-VALIDATION-RUNBOOK.md`](docs/CLEANROOM-VALIDATION-RUNBOOK.md) |
 | See how this repository was usability-tested | [`docs/REPOSITORY-USABILITY.md`](docs/REPOSITORY-USABILITY.md) |
 | See the release-readiness verification record | [`docs/RELEASE-READINESS.md`](docs/RELEASE-READINESS.md) |
+| Try to falsify it | run `python3 falsify.py` |
+| Know what you can depend on across versions | [`docs/VERSIONING.md`](docs/VERSIONING.md) |
+| Report a suspected vulnerability | [`SECURITY.md`](SECURITY.md) |
+| Understand the contribution situation | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Understand the terminology | [`docs/DEVELOPER-LANGUAGE.md`](docs/DEVELOPER-LANGUAGE.md) |
 | Review dependency and SBOM policy | [`DEPENDENCIES.md`](DEPENDENCIES.md) |
 | Review security reporting | [`SECURITY.md`](SECURITY.md) |
@@ -283,9 +319,15 @@ Measured evidence and its limits: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) · 
 | **Commercial or institutional use** | [veraxis.io](https://veraxis.io) |
 
 **Contributions.** There is no contribution process established yet, and no
-contributor licence or acceptance promise. Issues remain the starting point;
-the exact branch, evidence, role-separation, and agent-provenance expectations
-are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+contributor licence or review policy exists. Issues are the reliable path today.
+If you are considering a substantive contribution, open an issue first so it
+isn't wasted effort. [`CONTRIBUTING.md`](CONTRIBUTING.md) states exactly what
+does and does not exist, including evidence, role-separation, and
+agent-provenance expectations for an owner-agreed change.
+
+**Security.** Do not report a suspected vulnerability through a public issue.
+[`SECURITY.md`](SECURITY.md) sets out the triage policy and the current state of
+the private reporting route.
 
 **A note on scope of support.** This is an experimental reference implementation
 maintained as research and engineering evidence. There is no support commitment,

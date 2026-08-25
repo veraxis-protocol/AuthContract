@@ -1,18 +1,32 @@
 # Contributing
 
-AuthContract is an experimental evidence repository with no general acceptance
-promise. Start with a GitHub issue describing the bounded problem, the exact
-commit SHA, and a reproducer against synthetic fixtures. This is the reliable
-path for bugs, claim corrections, and proposed changes.
+## Current status: no unsolicited contribution workflow is established
 
-For a code contribution:
+There is no established process for unsolicited pull requests, contributor
+licence agreement, review-time commitment, maintainer rota, governance model,
+or merge policy for outside contributions. AuthContract is experimental
+research and engineering evidence, not a community-maintained project. No
+license is declared, so contribution acceptance and redistribution terms are
+also unsettled owner decisions.
 
-1. agree scope with the owner before substantial work;
-2. create a focused branch and pull request—never push directly to `main`;
-3. run `make ci` and include the literal output and commit SHA;
-4. state the producer and proposed independent verifier;
-5. label claims as proved, measured, argued, or assumed; and
-6. state `NOT SELF-ADJUDICATED` in the pull request.
+## What is genuinely useful right now
+
+Open an issue first. Include the exact commit SHA, OS, Python version, and a
+minimal reproducer against the committed synthetic fixtures. Falsifications of
+documented behaviour are especially useful:
+
+- `make ci` runs the full producer verification surface;
+- `make falsify` exercises the bounded Wave 1 harness; and
+- `python3 falsify.py` exercises the AC-039 public harness.
+
+For suspected vulnerabilities, do not open a public issue; follow
+[`SECURITY.md`](SECURITY.md).
+
+If a code change is agreed, create a focused pull request rather than pushing
+to `main`, include a regression test, preserve negative tests, report literal
+command output at the exact commit, identify producer and proposed independent
+verifier, classify claims as proved, measured, argued, or assumed, and state
+`NOT SELF-ADJUDICATED`.
 
 AI-assisted contributions should add these trailers when applicable:
 
@@ -23,8 +37,4 @@ Agent-Execution-ID: <optional attributable execution identifier>
 ```
 
 Trailers are supplemental provenance. They do not establish authorship,
-authority, independent verification, or acceptance. Security reports follow
-`SECURITY.md`, not the public issue path.
-
-No contributor licence agreement or licence grant is established by this file.
-
+authority, independent verification, acceptance, or a licence grant.

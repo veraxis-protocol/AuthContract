@@ -216,6 +216,57 @@ def sustained_throughput(
 
 # Paths that constitute the device under test. The benchmark measures these and
 # must not modify them; the harness itself lives outside this set.
+def capture_dependency_identity() -> dict[str, Any]:
+    """Record the exact third-party distributions present while measuring.
+
+    Performance and correctness are properties of the code *plus* the
+    dependencies it runs against. Recording the declared constraints alongside
+    the versions actually installed makes the pair checkable: if they disagree,
+    the run was not measuring the controlled set it claims to measure.
+    """
+    constraints_path = REPO_ROOT / "constraints.txt"
+    declared: dict[str, str] = {}
+    if constraints_path.exists():
+        for line in constraints_path.read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line and "==" in line:
+                name, version = line.split("==", 1)
+                declared[name.strip().lower().replace("_", "-")] = version.strip()
+
+    installed: dict[str, str] = {}
+    try:
+        from importlib import metadata
+
+        for dist in metadata.distributions():
+            name = (dist.metadata["Name"] or "").lower().replace("_", "-")
+            if name:
+                installed[name] = dist.version
+    except Exception as exc:  # pragma: no cover - defensive
+        return {"declared": declared, "error": f"could not enumerate installed set: {exc}"}
+
+    relevant = {name: installed.get(name) for name in sorted(declared)}
+    mismatched = {
+        name: {"declared": declared[name], "installed": relevant[name]}
+        for name in declared
+        if relevant[name] is not None and relevant[name] != declared[name]
+    }
+    absent = sorted(name for name in declared if relevant[name] is None)
+    return {
+        "constraints_file": "constraints.txt",
+        "declared": declared,
+        "installed_for_declared": relevant,
+        "mismatched": mismatched,
+        "declared_but_not_installed": absent,
+        "matches_declared_set": not mismatched,
+        "note": (
+            "declared_but_not_installed is expected for distributions pinned only "
+            "for older Python versions (pytest pulls exceptiongroup and tomli on "
+            "Python < 3.11 only). A non-empty 'mismatched' means this run did not "
+            "measure the controlled dependency set."
+        ),
+    }
+
+
 DUT_PATHS = (
     "authcontract",
     "tests",

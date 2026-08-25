@@ -4,6 +4,13 @@ on:
   push:
   pull_request:
 
+# Least privilege (AC-039). This workflow only reads the repository and runs
+# tests: it publishes nothing, comments nothing, and touches no GitHub state.
+# The default token grant is not relied on — prior runs succeeding under the
+# default does not establish that the default is appropriate.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,5 +25,9 @@ jobs:
       # The no-network reinstall later in `make ci` must find the declared build backend
       # locally. Python 3.12+ runner virtual environments do not guarantee setuptools.
       - run: python -m pip install "setuptools>=61,<85"
-      - run: python -m pip install -e ".[test]"
+      - run: python -m pip install -e ".[test]" -c constraints.txt
+      - name: Record the exact installed dependency set
+        run: pip freeze --exclude-editable
       - run: make ci
+      - name: AC-039 public falsification harness
+        run: python3 falsify.py
