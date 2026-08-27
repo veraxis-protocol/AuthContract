@@ -1,5 +1,9 @@
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by the Python 3.10 CI matrix
+    import tomli as tomllib
 
 
 ROOT = Path(__file__).parents[1]
