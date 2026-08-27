@@ -110,11 +110,9 @@ commitment stated plainly.
 
 ### Open, with disposition
 
-**U1 — no licence is declared.** Default copyright applies and no usage rights
-are granted. **OPEN — owner decision.** Choosing a licence has legal effect and
-is not an executor decision. Stated truthfully in `README.md` and `AGENTS.md`
-§15 rather than left for a reader to discover. This is the single largest
-adoption barrier in the repository.
+**U1 — licensing is declared.** **CLOSED by owner decision.** The root `LICENSE`
+contains PolyForm Noncommercial License 1.0.0, and `pyproject.toml` identifies
+that file. Commercial use requires a separate written license from Veraxis.
 
 **U5 — the benchmark DUT guard treats `README.md` as a protected surface, so
 documentation-only changes trip it.** **OPEN — deliberately not worked around.**
@@ -260,21 +258,11 @@ Key truthful reconciliations:
 
 ## Machine-readable licensing
 
-`pyproject.toml` now declares the Trove classifier
-`License :: Other/Proprietary License`. That is the ecosystem-standard
-machine-readable way to state that this project is **not** open source, and it
-confers no rights — it describes the existing default-copyright state rather
-than creating a new one.
-
-No SPDX identifier was declared, because none would be true. A PEP 639
-`license = "LicenseRef-…"` expression was considered and rejected: it would
-require an accompanying license text file that only the owner can author.
-
-**BLOCKED-OWNER-DECISION.** The exact decision needed, and nothing more: *under
-what license, if any, is AuthContract offered to third parties?* Until that is
-answered, no license file can be added, downstream use remains legally
-impossible, and 1.0 remains unreachable. This is the single largest adoption
-barrier in the repository (finding U1).
+The root `LICENSE` contains the PolyForm Noncommercial License 1.0.0 and
+`pyproject.toml` identifies that license file. Noncommercial use, modification,
+testing, and distribution are permitted subject to its terms. Commercial use
+requires a separate written license from Veraxis. No conflicting SPDX grant is
+declared, and no third-party license-compatibility conclusion is established.
 
 ## Public falsification
 

@@ -261,13 +261,10 @@ Do not soften, omit, or paraphrase this ceiling when summarizing the project.
 
 ## 15. Licensing
 
-**No license is declared.** No `LICENSE` file exists and `pyproject.toml`
-declares no SPDX license field, so default copyright applies and no usage rights
-are granted. `pyproject.toml` carries the Trove classifier
-`License :: Other/Proprietary License` — a machine-readable statement that this
-is **not** open source. That classifier is a description, not a grant. Treat this as source-available for evaluation and reading. **Do not
-describe it as open source**, and do not assume redistribution or derivative
-rights. Direct licensing questions to the repository owner.
+Licensed under the PolyForm Noncommercial License 1.0.0. Noncommercial use,
+modification, testing, and distribution are permitted subject to the license
+terms. Commercial use requires a separate written license from Veraxis. Do not
+describe the project as open source or imply commercial-use rights.
 
 ## 15a. Version and interface stability
 

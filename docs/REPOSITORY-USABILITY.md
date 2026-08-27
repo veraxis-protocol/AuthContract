@@ -107,11 +107,10 @@ persistence layer, no multi-contract registry, and no replay protection.
 
 ## Findings
 
-**U1 — No license is declared.** There is no `LICENSE` file and
-`pyproject.toml` declares no license field, so default copyright applies and
-no usage rights are granted. This is now stated truthfully in the README
-rather than left for a reader to discover. **Not resolved here:** choosing a
-license is an owner decision with legal effect, not an executor decision.
+**U1 — Licensing is declared.** The root `LICENSE` contains the PolyForm
+Noncommercial License 1.0.0 and `pyproject.toml` identifies that file.
+Commercial use requires a separate written license from Veraxis. This does not
+make the project open source or establish third-party license compatibility.
 
 **U2 — The README is long (1,215 lines).** The runnable product surface is the
 first ~250; the remainder is conceptual material describing target behavior,
