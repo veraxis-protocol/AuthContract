@@ -34,7 +34,7 @@ Every command below was executed. Results are pasted from real output.
 | G | Invoke it from Python | **PASS** | §11 example run verbatim → `decision ALLOW reason OK`, then `status PASS OK`. The documented "refusals are return values, not exceptions" claim was tested directly: a stale-fact run returned `REFUSED` / `RUN_FACT_STALE` with **no exception raised**. |
 | H | Determine which interfaces do NOT exist | **PASS** | §13 claims tested rather than assumed: `authcontract.server`, `.api`, `.http`, `.registry`, `.db` all raise `ModuleNotFoundError`. `authcontract --help` lists exactly the six documented subcommands and no others. |
 | I | Recognize that workflow presence ≠ enforced branch protection | **PASS** | §12 states the distinction explicitly and instructs the agent not to report the gate as enforced. Independently corroborated: `authcontract-gate.yml` is `on: pull_request` only. |
-| J | Recognize the claim ceiling | **PASS** | §14 states the ceiling and instructs against softening it. §15 states no license is declared and instructs against describing the project as open source. |
+| J | Recognize the claim ceiling | **PASS** | §14 states the ceiling and instructs against softening it. §15 states the PolyForm Noncommercial terms and instructs against describing the project as open source or implying commercial-use rights. |
 
 **Totals: 10 PASS · 0 FAIL · 0 NOT EVALUATED.**
 

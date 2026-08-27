@@ -278,9 +278,10 @@ Measured evidence and its limits: [`docs/BENCHMARKS-AC-039.md`](docs/BENCHMARKS-
 
 ## License
 
-**No license is currently declared.** This repository contains no `LICENSE` file and `pyproject.toml` declares no license field. Absent an explicit grant, default copyright applies and no usage rights are conferred — so treat this as source-available for evaluation and reading, not as open source. If you need licensed use, ask the repository owner.
-
-`pyproject.toml` declares the Trove classifier `License :: Other/Proprietary License`. That is the machine-readable statement of the situation described above — it marks the project as **not** open source without inventing a grant. It is a description of the current state, not a license, and it confers nothing. No SPDX identifier is declared, because declaring one would be false. Selecting an actual license is an owner decision that has not been made.
+Licensed under the PolyForm Noncommercial License 1.0.0.
+Noncommercial use, modification, testing, and distribution are permitted
+subject to the license terms. Commercial use requires a separate written
+license from Veraxis.
 
 ---
 
