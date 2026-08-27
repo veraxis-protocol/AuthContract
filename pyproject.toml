@@ -5,6 +5,7 @@ description = "AuthContract reference implementation — canonical digest and ru
 requires-python = ">=3.10"
 dependencies = ["rfc8785>=0.1.2,<0.2"]
 
+license = "PolyForm-Noncommercial-1.0.0"
 license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -22,7 +23,7 @@ test = ["pytest>=7.0,<10"]
 include = ["authcontract*"]
 
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
