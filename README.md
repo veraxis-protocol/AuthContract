@@ -1175,7 +1175,7 @@ Current results are bounded to the implemented and tested specimens.
 **Downstream:** Receipts and evidence available for independent recomputation, examination and reconciliation  
 **Canonical category thesis:** https://github.com/veraxis-protocol/institutional-continuity/blob/main/THESIS.md
 
-A receipt records that a specific rule artifact, at a specific version, authorized a specific action, and lets a third party recompute that binding without trusting the issuer. That is evidence *about* an authorization. It is not the origin of institutional authority: recomputing a receipt establishes the integrity of the binding, not that the underlying rule was validly admitted by an institution entitled to establish it.
+A receipt records that a specific rule artifact, at a specific version, authorized a specific action, and lets a third party recompute that binding without trusting the issuer. That is evidence *about* an authorization. It is not the origin of institutional authority. A successfully recomputed receipt establishes only the bounded cryptographic and structural integrity properties actually verified under the applicable schema and profile. It does not by itself establish truth, completeness, institutional validity, correct upstream interpretation, consequence occurrence, or observation coverage — in particular, it does not establish that the underlying rule was validly admitted by an institution entitled to establish it.
 
 Architectural role does not imply production readiness. This repository's own boundary governs — see the implementation-status note near the top, [What is *not* implemented](#what-is-not-implemented), and **Current status** immediately above.
 
