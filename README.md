@@ -1167,6 +1167,22 @@ Current results are bounded to the implemented and tested specimens.
 
 ---
 
+## Role in Open Institutional Computation
+
+**Category:** Open Institutional Computation  
+**This component:** Experimental reference implementation of an explicit approved machine-control object — a canonical, testable rule artifact bound to the exact actions it authorizes, with independently recomputable receipts  
+**Upstream:** An institutional source, and an admission act performed by parties with the required standing; the Veraxis reference path for that upstream problem is [OIC — Open Institutional Compiler](https://github.com/veraxis-protocol/Institutional-Compiler)  
+**Downstream:** Receipts and evidence available for independent recomputation, examination and reconciliation  
+**Canonical category thesis:** https://github.com/veraxis-protocol/institutional-continuity/blob/main/THESIS.md
+
+A receipt records that a specific rule artifact, at a specific version, authorized a specific action, and lets a third party recompute that binding without trusting the issuer. That is evidence *about* an authorization. It is not the origin of institutional authority: recomputing a receipt establishes the integrity of the binding, not that the underlying rule was validly admitted by an institution entitled to establish it.
+
+Architectural role does not imply production readiness. This repository's own boundary governs — see the implementation-status note near the top, [What is *not* implemented](#what-is-not-implemented), and **Current status** immediately above.
+
+This section sits below the developer workflow deliberately, per `docs/DEVELOPER-LANGUAGE.md`: the deeper ontology vocabulary is introduced only after the developer-facing workflow is already clear.
+
+---
+
 ## Current specimen
 
 The primary development specimen is a synthetic banking payment workflow.
