@@ -50,7 +50,7 @@ pytest==9.1.1
 # --- transitive, pulled in by pytest ---
 iniconfig==2.3.0
 packaging==25.0
-pluggy==1.6.0
+pluggy==1.7.0
 Pygments==2.21.0
 
 # --- transitive, installed only on Python < 3.11 (pytest environment markers) ---
