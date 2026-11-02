@@ -45,7 +45,7 @@
 rfc8785==0.1.4
 
 # --- test extra ---
-pytest==9.1.1
+pytest==9.2.0
 
 # --- transitive, pulled in by pytest ---
 iniconfig==2.3.0
